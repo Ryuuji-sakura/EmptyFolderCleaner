@@ -176,8 +176,11 @@ enum FolderSweeper {
     /// Delete, then look again, until the tree stops changing. Removing a deep
     /// `.DS_Store` can leave a whole chain of parents empty, and the user should
     /// not have to re-run the app to clear them.
-    static func sweep(root: URL, options: Options, initial: ScanResult? = nil) -> SweepResult {
-        var pending = initial ?? scan(root: root, options: options)
+    /// Always scans first rather than accepting a caller's list: a list handed in
+    /// from the UI is a snapshot, and a folder that gained a file since then must not
+    /// be deleted on the strength of it.
+    static func sweep(root: URL, options: Options) -> SweepResult {
+        var pending = scan(root: root, options: options)
         var result = SweepResult()
         guard !pending.isEmpty else { return result }
 

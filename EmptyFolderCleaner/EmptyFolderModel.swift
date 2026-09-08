@@ -13,9 +13,16 @@ final class EmptyFolderModel: ObservableObject {
     @Published private(set) var isScanning = false
     @Published private(set) var isDeleting = false
     @Published var statusMessage = "フォルダをドラッグ＆ドロップするか、選択してください"
+    /// True right after a delete that removed at least one `.DS_Store`, so the UI can
+    /// warn that Finder may recreate it the moment this folder is viewed again —
+    /// otherwise a user who checks in Finder sees it "come back" and assumes the
+    /// deletion silently failed.
+    @Published private(set) var showDSStoreReappearNote = false
 
     /// When true, a folder containing only `.DS_Store` counts as "empty" and that
-    /// `.DS_Store` is deleted along with it. When false, such folders are left alone.
+    /// `.DS_Store` is deleted along with it. When false, such folders are left alone —
+    /// unless `deleteAllDSStoreFiles` is on, which overrides this and sweeps them
+    /// anyway, since a `.DS_Store` that is always deleted can never keep a folder alive.
     @Published var includeDSStoreOnlyFolders: Bool {
         didSet {
             UserDefaults.standard.set(includeDSStoreOnlyFolders, forKey: Self.includeDSStoreOnlyFoldersKey)
@@ -43,6 +50,12 @@ final class EmptyFolderModel: ObservableObject {
     private static let includeDSStoreOnlyFoldersKey = "includeDSStoreOnlyFolders"
     private static let deleteAllDSStoreFilesKey = "deleteAllDSStoreFiles"
     private static let moveToTrashKey = "moveToTrash"
+
+    /// Bumped by every scan and delete. A finished task publishes its results only
+    /// while its own token is still the current one, so a scan that has been
+    /// superseded — the user flipped a checkbox or dropped another folder while it
+    /// ran — can no longer land on top of the newer one's results.
+    private var currentToken = 0
 
     private init() {
         let defaults = UserDefaults.standard
@@ -93,16 +106,22 @@ final class EmptyFolderModel: ObservableObject {
         }
     }
 
+    /// A scan already under way is superseded rather than blocked, so the results on
+    /// screen always reflect the options as they stand now. Scanning is refused only
+    /// while a delete runs, since its findings would be stale the moment it finished.
     func scan() {
-        guard let root = targetFolder else { return }
+        guard let root = targetFolder, !isDeleting else { return }
+        let token = beginOperation()
         isScanning = true
         emptyFolders = []
         dsStoreFiles = []
+        showDSStoreReappearNote = false
         statusMessage = "スキャン中..."
         let options = sweepOptions
         Task.detached(priority: .userInitiated) {
             let result = FolderSweeper.scan(root: root, options: options)
             await MainActor.run {
+                guard self.currentToken == token else { return }
                 self.emptyFolders = result.emptyFolders
                 self.dsStoreFiles = result.dsStoreFiles
                 self.isScanning = false
@@ -111,23 +130,33 @@ final class EmptyFolderModel: ObservableObject {
         }
     }
 
+    /// The sweep re-scans instead of deleting the list on screen: that list is a
+    /// snapshot, and anything dropped into one of those folders since the scan must
+    /// keep the folder alive rather than ride into the Trash with it.
     func deleteAll() {
-        guard hasDeletableItems, let root = targetFolder else { return }
+        guard hasDeletableItems, !isBusy, let root = targetFolder else { return }
         let options = sweepOptions
-        let initial = FolderSweeper.ScanResult(emptyFolders: emptyFolders, dsStoreFiles: dsStoreFiles)
         let usingTrash = moveToTrash
+        let token = beginOperation()
         isDeleting = true
         statusMessage = usingTrash ? "ゴミ箱に移動中..." : "削除中..."
 
         Task.detached(priority: .userInitiated) {
-            let result = FolderSweeper.sweep(root: root, options: options, initial: initial)
+            let result = FolderSweeper.sweep(root: root, options: options)
             await MainActor.run {
+                guard self.currentToken == token else { return }
                 self.emptyFolders = result.remaining.emptyFolders
                 self.dsStoreFiles = result.remaining.dsStoreFiles
                 self.isDeleting = false
+                self.showDSStoreReappearNote = result.deletedFiles > 0
                 self.statusMessage = Self.deletedSummary(result, movedToTrash: usingTrash)
             }
         }
+    }
+
+    private func beginOperation() -> Int {
+        currentToken += 1
+        return currentToken
     }
 
     // MARK: - Messages
@@ -150,10 +179,24 @@ final class EmptyFolderModel: ObservableObject {
         if result.deletedFolders > 0 { parts.append("空フォルダ \(result.deletedFolders) 件") }
         if result.deletedFiles > 0 { parts.append(".DS_Store \(result.deletedFiles) 個") }
         let verb = movedToTrash ? "をゴミ箱に入れました" : "を完全に削除しました"
-        let done = parts.isEmpty ? "削除できるものはありませんでした。" : "\(parts.joined(separator: "、"))\(verb)。"
-        guard !result.failures.isEmpty else { return done }
         let names = result.failures.prefix(3).map { $0.url.lastPathComponent }.joined(separator: "、")
         let more = result.failures.count > 3 ? " ほか\(result.failures.count - 3)件" : ""
-        return "\(done) \(result.failures.count) 件は処理できませんでした（\(names)\(more)）。"
+        let failed = "\(result.failures.count) 件は処理できませんでした（\(names)\(more)）。"
+
+        // Shown only when the sweep ended with nothing left to delete, so this really
+        // is the last word — not just "this pass found no failures".
+        let confirmed = result.remaining.isEmpty ? "確認済み・消し残しはありません。" : ""
+
+        switch (parts.isEmpty, result.failures.isEmpty) {
+        case (true, true):
+            return "削除できるものはありませんでした。"
+        case (true, false):
+            // Nothing came out, so "nothing to delete was found" would contradict itself.
+            return failed
+        case (false, true):
+            return "\(parts.joined(separator: "、"))\(verb)。\(confirmed)"
+        case (false, false):
+            return "\(parts.joined(separator: "、"))\(verb)。 \(failed)"
+        }
     }
 }

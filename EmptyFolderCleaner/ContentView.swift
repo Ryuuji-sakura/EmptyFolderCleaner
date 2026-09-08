@@ -62,6 +62,10 @@ struct ContentView: View {
 
                 statusBadge
 
+                if model.showDSStoreReappearNote {
+                    dsStoreReappearNote
+                }
+
                 HStack {
                     Spacer()
                     if model.hasDeletableItems {
@@ -244,6 +248,17 @@ struct ContentView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(Capsule().fill(.white.opacity(0.18)))
+    }
+
+    /// Reassurance shown right after a delete removed `.DS_Store` files: Finder
+    /// silently recreates one the moment it displays the folder again, which reads
+    /// to a non-technical user as "the deletion didn't actually work".
+    private var dsStoreReappearNote: some View {
+        Text("💡 このあとFinderでこのフォルダを開くと、.DS_Storeが自動的に作り直されることがあります。削除に失敗したわけではありません。")
+            .font(.system(.caption2, design: .rounded))
+            .foregroundStyle(.white.opacity(0.85))
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 4)
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
