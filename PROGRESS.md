@@ -21,8 +21,8 @@
 ## 現在の実装（SwiftUIネイティブアプリ）
 
 ### 場所
-- プロジェクト一式: `/Users/rt-denkou/Claude Code/EmptyFolderCleaner/`
-- ビルド済みアプリ: `/Users/rt-denkou/Claude Code/EmptyFolderCleaner/空フォルダ削除.app`
+- プロジェクト一式: このリポジトリ
+- ビルド済みアプリ: リポジトリ直下の `空フォルダ削除.app`（Gitでは追跡していない）
 - xcodegen管理（`project.yml`から`.xcodeproj`を生成）
 
 ### 主なソースファイル
