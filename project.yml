@@ -61,15 +61,33 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGN_STYLE: Automatic
+  EmptyFolderCleanerUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: EmptyFolderCleaner
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ryuujisakura.emptyfoldercleaner.uitests
+        TEST_TARGET_NAME: EmptyFolderCleaner
+        SWIFT_VERSION: "5.0"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: Y9B2784T8A
 schemes:
   EmptyFolderCleaner:
     build:
       targets:
         EmptyFolderCleaner: all
         EmptyFolderCleanerTests: [test]
+        EmptyFolderCleanerUITests: [test]
     test:
       config: Debug
       targets:
         - EmptyFolderCleanerTests
+        - EmptyFolderCleanerUITests
     run:
       config: Debug

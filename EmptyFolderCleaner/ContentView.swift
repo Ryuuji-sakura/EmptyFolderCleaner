@@ -73,6 +73,7 @@ struct ContentView: View {
                         .buttonStyle(PopButtonStyle(colors: [Color.popPink, Color.popCoral]))
                         .keyboardShortcut(.defaultAction)
                         .disabled(model.isBusy)
+                        .accessibilityIdentifier("button.delete")
                     }
                 }
             }
@@ -169,16 +170,19 @@ struct ContentView: View {
             }
             .toggleStyle(.checkbox)
             .disabled(model.deleteAllDSStoreFiles)
+            .accessibilityIdentifier("toggle.dsStoreOnlyFolders")
 
             Toggle(isOn: $model.deleteAllDSStoreFiles) {
                 optionLabel("フォルダ内すべての .DS_Store を削除する（中身のあるフォルダはそのまま残る）")
             }
             .toggleStyle(.checkbox)
+            .accessibilityIdentifier("toggle.allDSStoreFiles")
 
             Toggle(isOn: $model.moveToTrash) {
                 optionLabel("ゴミ箱に入れる（オフにすると完全に削除。元に戻せません）")
             }
             .toggleStyle(.checkbox)
+            .accessibilityIdentifier("toggle.moveToTrash")
         }
     }
 
@@ -206,6 +210,7 @@ struct ContentView: View {
                     HStack(spacing: 8) {
                         Text(item.isFolder ? "📁" : "📄")
                         Text(relativePath(item.url))
+                            .accessibilityIdentifier("row.\(relativePath(item.url))")
                             .font(.system(.caption, design: .monospaced))
                             .foregroundStyle(.white)
                             .lineLimit(1)
@@ -233,6 +238,7 @@ struct ContentView: View {
 
     private var statusBadge: some View {
         Text(model.statusMessage)
+            .accessibilityIdentifier("label.status")
             .font(.system(.callout, design: .rounded).weight(.semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, 14)

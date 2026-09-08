@@ -12,18 +12,31 @@
 		3975DC01C11A2F91028F3A26 /* EmptyFolderCleanerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F009C93E6C442A115753EB2 /* EmptyFolderCleanerApp.swift */; };
 		40590E60ECBBBDAF92354CC9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6714878F4BE7D498A1B9DB42 /* ContentView.swift */; };
 		4B19B82D6002882FC9E7E55F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B705CA646A19BD2D616D2CC /* AppDelegate.swift */; };
+		60EA2BC961280EAA4C178CD7 /* EmptyFolderCleanerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7BC7972493AD5A336BD057B /* EmptyFolderCleanerUITests.swift */; };
 		696B53322DBDCB8907D1ED34 /* FolderSweeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF9A90E8A8328B8244A293F /* FolderSweeper.swift */; };
 		7F0F3F8921BE5C3B57D06C26 /* FolderSweeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF9A90E8A8328B8244A293F /* FolderSweeper.swift */; };
 		BD56B1D1EA5B93BBDC964FF4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 39E5420397491088B2BE71EE /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		A3DF6E919F7467820E62AB4A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F3A378E328358A97B75DCEE5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9498A367C622C12903CE4D5A;
+			remoteInfo = EmptyFolderCleaner;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		33804A2E641F4972257F9D76 /* EmptyFolderCleaner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EmptyFolderCleaner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		39E5420397491088B2BE71EE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3B431C9EA122F1B3B5A21F3E /* EmptyFolderCleanerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EmptyFolderCleanerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3FF9A90E8A8328B8244A293F /* FolderSweeper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSweeper.swift; sourceTree = "<group>"; };
 		4F009C93E6C442A115753EB2 /* EmptyFolderCleanerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyFolderCleanerApp.swift; sourceTree = "<group>"; };
 		5B705CA646A19BD2D616D2CC /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		6714878F4BE7D498A1B9DB42 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		C7BC7972493AD5A336BD057B /* EmptyFolderCleanerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyFolderCleanerUITests.swift; sourceTree = "<group>"; };
 		DA6CC1C467D9BCD8E086BE84 /* EmptyFolderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyFolderModel.swift; sourceTree = "<group>"; };
 		EFF07EF7E36A3F0B22A25378 /* EmptyFolderCleanerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EmptyFolderCleanerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F389067349E11F75B9C38AE0 /* FolderSweeperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSweeperTests.swift; sourceTree = "<group>"; };
@@ -56,8 +69,17 @@
 			children = (
 				65A8C2E758E1F139E4C2C994 /* EmptyFolderCleaner */,
 				1DF1C6E5522A41E5AF444B9C /* Tests */,
+				A22F0220C87C3B7A275A33DC /* UITests */,
 				D35C5440D5714E36DE55BF77 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		A22F0220C87C3B7A275A33DC /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				C7BC7972493AD5A336BD057B /* EmptyFolderCleanerUITests.swift */,
+			);
+			path = UITests;
 			sourceTree = "<group>";
 		};
 		D35C5440D5714E36DE55BF77 /* Products */ = {
@@ -65,6 +87,7 @@
 			children = (
 				33804A2E641F4972257F9D76 /* EmptyFolderCleaner.app */,
 				EFF07EF7E36A3F0B22A25378 /* EmptyFolderCleanerTests.xctest */,
+				3B431C9EA122F1B3B5A21F3E /* EmptyFolderCleanerUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -72,6 +95,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		38C936993F4827D91777FC0F /* EmptyFolderCleanerUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A98E0282B3AF698773362A98 /* Build configuration list for PBXNativeTarget "EmptyFolderCleanerUITests" */;
+			buildPhases = (
+				FE8850D57F38D74FEB50C75C /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C4765C847662A3107742EBAD /* PBXTargetDependency */,
+			);
+			name = EmptyFolderCleanerUITests;
+			packageProductDependencies = (
+			);
+			productName = EmptyFolderCleanerUITests;
+			productReference = 3B431C9EA122F1B3B5A21F3E /* EmptyFolderCleanerUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		9498A367C622C12903CE4D5A /* EmptyFolderCleaner */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 15A56D31962F197C77787781 /* Build configuration list for PBXNativeTarget "EmptyFolderCleaner" */;
@@ -116,6 +157,11 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					38C936993F4827D91777FC0F = {
+						DevelopmentTeam = Y9B2784T8A;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 9498A367C622C12903CE4D5A;
+					};
 					9498A367C622C12903CE4D5A = {
 						DevelopmentTeam = Y9B2784T8A;
 						ProvisioningStyle = Automatic;
@@ -141,6 +187,7 @@
 			targets = (
 				9498A367C622C12903CE4D5A /* EmptyFolderCleaner */,
 				DF304F3AF8F8BB115182992F /* EmptyFolderCleanerTests */,
+				38C936993F4827D91777FC0F /* EmptyFolderCleanerUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -178,7 +225,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FE8850D57F38D74FEB50C75C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				60EA2BC961280EAA4C178CD7 /* EmptyFolderCleanerUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C4765C847662A3107742EBAD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9498A367C622C12903CE4D5A /* EmptyFolderCleaner */;
+			targetProxy = A3DF6E919F7467820E62AB4A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		5F1FB784B2F97D1501DE6819 /* Debug */ = {
@@ -286,6 +349,48 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.ryuujisakura.emptyfoldercleaner.tests;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		B11DFFAE5041351601F48A99 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = Y9B2784T8A;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ryuujisakura.emptyfoldercleaner.uitests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = EmptyFolderCleaner;
+			};
+			name = Debug;
+		};
+		E69B6307B75594541E93D017 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = Y9B2784T8A;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ryuujisakura.emptyfoldercleaner.uitests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = EmptyFolderCleaner;
 			};
 			name = Release;
 		};
@@ -399,6 +504,15 @@
 			buildConfigurations = (
 				5F1FB784B2F97D1501DE6819 /* Debug */,
 				F5956A0D52629137A8FFAF4F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A98E0282B3AF698773362A98 /* Build configuration list for PBXNativeTarget "EmptyFolderCleanerUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B11DFFAE5041351601F48A99 /* Debug */,
+				E69B6307B75594541E93D017 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

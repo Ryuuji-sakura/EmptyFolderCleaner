@@ -46,9 +46,17 @@ final class EmptyFolderModel: ObservableObject {
 
     private init() {
         let defaults = UserDefaults.standard
-        includeDSStoreOnlyFolders = defaults.object(forKey: Self.includeDSStoreOnlyFoldersKey) as? Bool ?? true
-        deleteAllDSStoreFiles = defaults.object(forKey: Self.deleteAllDSStoreFilesKey) as? Bool ?? true
-        moveToTrash = defaults.object(forKey: Self.moveToTrashKey) as? Bool ?? true
+        // Registered rather than read with `object(forKey:) as? Bool` so that a
+        // launch argument like `-moveToTrash NO` overrides the stored setting —
+        // that is how the UI tests pin the options they are exercising.
+        defaults.register(defaults: [
+            Self.includeDSStoreOnlyFoldersKey: true,
+            Self.deleteAllDSStoreFilesKey: true,
+            Self.moveToTrashKey: true,
+        ])
+        includeDSStoreOnlyFolders = defaults.bool(forKey: Self.includeDSStoreOnlyFoldersKey)
+        deleteAllDSStoreFiles = defaults.bool(forKey: Self.deleteAllDSStoreFilesKey)
+        moveToTrash = defaults.bool(forKey: Self.moveToTrashKey)
     }
 
     var totalDeletableCount: Int { emptyFolders.count + dsStoreFiles.count }

@@ -73,7 +73,7 @@ xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
   -configuration Release -derivedDataPath build build
 ```
 
-テスト:
+テスト（ユニット18件 + UI 5件）:
 
 ```sh
 xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
@@ -82,6 +82,15 @@ xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
 
 スキャンと削除のロジックは `EmptyFolderCleaner/FolderSweeper.swift` にまとまっていて、
 AppKit にも main actor にも依存していないため、実ファイルシステム上で直接テストできます。
+
+`UITests/` は実際のアプリを起動して操作する E2E テストです。LaunchServices 経由で
+フォルダを開くことで、サンドボックスの許可が付いた本番同様の状態を作っています。
+
+リリース（Developer ID 署名・公証・staple・検証）:
+
+```sh
+./Scripts/release.sh
+```
 
 ## ライセンス
 

@@ -35,6 +35,20 @@
                ReferencedContainer = "container:EmptyFolderCleaner.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "38C936993F4827D91777FC0F"
+               BuildableName = "EmptyFolderCleanerUITests.xctest"
+               BlueprintName = "EmptyFolderCleanerUITests"
+               ReferencedContainer = "container:EmptyFolderCleaner.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -61,6 +75,17 @@
                BlueprintIdentifier = "DF304F3AF8F8BB115182992F"
                BuildableName = "EmptyFolderCleanerTests.xctest"
                BlueprintName = "EmptyFolderCleanerTests"
+               ReferencedContainer = "container:EmptyFolderCleaner.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "38C936993F4827D91777FC0F"
+               BuildableName = "EmptyFolderCleanerUITests.xctest"
+               BlueprintName = "EmptyFolderCleanerUITests"
                ReferencedContainer = "container:EmptyFolderCleaner.xcodeproj">
             </BuildableReference>
          </TestableReference>

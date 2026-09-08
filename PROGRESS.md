@@ -111,8 +111,7 @@ xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
 
 ## 未対応・今後の余地
 
-- XCUITestによる本格的なエンドツーエンドUIテストは未実施。現状はロジックのユニットテスト（15件）と、
-  `open -a <app> <folder>`＋Accessibility APIでの実機確認で担保している。
+（2026-09-08 に XCUITest を追加したので、この項目は解消済み。下の「完了項目」を参照）
 
 ## 方針転換（2026-09-08）: フリーソフトとして公開する方向へ
 
@@ -236,3 +235,38 @@ Apple Developer Programには**加入済み**（Team ID: `Y9B2784T8A` / Ryuuji H
   判定し、失敗時はその場で`notarytool log`を出す。
 - 結果: アプリ・DMGとも `spctl --assess` が `accepted / source=Notarized Developer ID`。
   他人のMacでも警告なしに起動できる状態になった。
+
+## 完了項目（2026-09-08 その4 / XCUITestによるE2Eテスト）
+
+`UITests/EmptyFolderCleanerUITests.swift` を追加。5件。ユニットテスト18件と合わせて計23件。
+
+### 設計上のポイント（ハマりどころ）
+
+1. **サンドボックスとフォルダの渡し方**: 起動引数でパスを渡してもアプリは読めない
+   （サンドボックスの許可が付かないため、スキャン結果が常に0件になる）。
+   `NSWorkspace.open([folder], withApplicationAt:)` でLaunchServices経由で開くと、
+   Dockドロップと同じ扱いになり本物の許可が付く。その後 `XCUIApplication(bundleIdentifier:)`
+   でアタッチしてUIを操作する。
+2. **`OpenConfiguration.arguments` はアプリに届かない**。当初はこれで
+   `-moveToTrash NO` のように設定を固定するつもりだったが、まったく反映されなかった。
+   代わりにチェックボックスをUIからクリックして状態を作る（`setToggle`）。設定は
+   `UserDefaults`に永続化されるので、各テストが必要な状態を自分で作る必要がある。
+3. **`terminate()` ではなく `forceTerminate()` を使う**。確認ダイアログを開いたまま
+   失敗したテストがあると、モーダルループでQuitイベントが処理されずアプリが残り、
+   次のテストが古いインスタンスを掴んで連鎖的に失敗する。
+4. **モーダル表示中はダイアログ内の静的テキストがスナップショットに出ないことがある**。
+   確認文言の検証は、確実に露出するボタン名（`完全に削除する` / `ゴミ箱に入れる`）で行う。
+5. **UIテストランナー自身がサンドボックス化されている**。`homeDirectoryForCurrentUser` が
+   コンテナ内（`~/Library/Containers/....uitests.xctrunner/Data/`）を指すため、本物の
+   `~/.Trash` を確認できない。よってUIテストでの削除は完全削除モードで行い、
+   ゴミ箱の中身の検証は `FolderSweeperTests` 側に任せている。
+6. **安全ガード**: フォルダを消すアプリを実ディレクトリに向けるので、
+   `assertUnderTemporaryDirectory` で一時ディレクトリ配下であることを毎回確認している。
+
+### このテストが見つけたバグ
+
+**ウィンドウが増殖していた。** `WindowGroup` はドキュメントを開くたびに新しいウィンドウを
+作り、さらにmacOSの状態復元で次回起動時にその全部が復活する。テスト中に9枚まで積み上がって
+いるのが見つかった。単一ウィンドウのユーティリティなので `Window` シーン（macOS 13+）に
+変更して解消。ユーザーがDockに繰り返しフォルダをドロップしても増えなくなった。
+**この修正はv1.0リリース後なので、配布済みのv1.0にはこのバグが残っている。**
