@@ -1,0 +1,16 @@
+# Xcode build artifacts
+build/
+DerivedData/
+**/xcuserdata/
+**/*.xcuserstate
+
+# Build products / packaging output
+*.app/
+*.dmg
+
+# macOS
+.DS_Store
+Icon?
+
+# Claude Code の作業用ディレクトリ
+.claude/
