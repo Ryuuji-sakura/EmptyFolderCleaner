@@ -16,8 +16,8 @@ targets:
         DEVELOPMENT_TEAM: Y9B2784T8A
         PRODUCT_NAME: EmptyFolderCleaner
         PRODUCT_MODULE_NAME: EmptyFolderCleaner
-        MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.1"
+        CURRENT_PROJECT_VERSION: "2"
         SWIFT_VERSION: "5.0"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         ENABLE_HARDENED_RUNTIME: YES
@@ -35,6 +35,10 @@ targets:
         LSApplicationCategoryType: public.app-category.utilities
         NSHumanReadableCopyright: ""
         CFBundleDisplayName: 空フォルダ削除
+        # これが無いと Info.plist にはxcodegenの既定値 1.0 が焼き込まれ、
+        # MARKETING_VERSION を上げても配布物のバージョンが変わらない。
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleDocumentTypes:
           - CFBundleTypeRole: Viewer
             CFBundleTypeName: Folder

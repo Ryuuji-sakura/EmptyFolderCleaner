@@ -270,3 +270,20 @@ Apple Developer Programには**加入済み**（Team ID: `Y9B2784T8A` / Ryuuji H
 いるのが見つかった。単一ウィンドウのユーティリティなので `Window` シーン（macOS 13+）に
 変更して解消。ユーザーがDockに繰り返しフォルダをドロップしても増えなくなった。
 **この修正はv1.0リリース後なので、配布済みのv1.0にはこのバグが残っている。**
+
+## 完了項目（2026-09-08 その5 / v1.1）
+
+ウィンドウ増殖の修正を配布するため v1.1 をリリース。作業中に2つの穴が見つかった。
+
+- **バージョンが上がらない罠**: `Info.plist` の `CFBundleShortVersionString` に
+  xcodegenの既定値 `1.0` が焼き込まれており、`MARKETING_VERSION` を上げても
+  配布物のバージョンが変わらなかった（公証まで通ってから気づいた）。
+  `project.yml` の `info.properties` に `CFBundleShortVersionString: $(MARKETING_VERSION)` と
+  `CFBundleVersion: $(CURRENT_PROJECT_VERSION)` を追加して解消。
+  `release.sh` にビルド前後でバージョンを表示するステップも足した。
+- **`release.sh` がテスト失敗を素通りする穴**: `xcodebuild ... test 2>&1 | tail -3` と
+  書いていたため、パイプラインの終了コードが `tail` のものになり、テストが落ちても
+  `set -e` で止まらなかった。公証の `notarytool` と同じ種類の罠。結果を明示的に判定し、
+  失敗時はログの場所を出すように修正。
+- 実機確認: 3回続けてフォルダを開いてもウィンドウは1枚のまま、
+  表示対象も最後に開いたフォルダに更新される。

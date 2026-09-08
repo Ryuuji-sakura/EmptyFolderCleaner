@@ -49,8 +49,18 @@ cd "$ROOT"
 xcodegen generate
 
 step "テストを実行"
-xcodebuild -project "$SCHEME.xcodeproj" -scheme "$SCHEME" \
-    -configuration Debug -derivedDataPath build test 2>&1 | tail -3
+# `| tail` を通すとパイプラインの終了コードが tail のものになり、テストが落ちても
+# 素通りしてしまう（set -e では捕まらない）。結果を明示的に判定する。
+if ! xcodebuild -project "$SCHEME.xcodeproj" -scheme "$SCHEME" \
+        -configuration Debug -derivedDataPath build test > "$BUILD_DIR/test.log" 2>&1; then
+    grep -E "error:|Executed .* tests" "$BUILD_DIR/test.log" | tail -20
+    echo "テストが失敗しました。詳細: $BUILD_DIR/test.log" >&2
+    exit 1
+fi
+grep -E "Executed .* tests" "$BUILD_DIR/test.log" | tail -2
+
+step "バージョンを確認"
+echo "MARKETING_VERSION: $(sed -n 's/.*MARKETING_VERSION: "\(.*\)"/\1/p' project.yml | head -1)"
 
 step "Developer IDで署名してビルド"
 rm -rf "$BUILT_APP"
@@ -78,6 +88,9 @@ rm -f "$ZIP"
 
 step "アプリにstaple"
 xcrun stapler staple "$BUILT_APP"
+
+step "配布物のバージョンを確認"
+/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$BUILT_APP/Contents/Info.plist"
 
 step "配布用の名前でアプリを配置"
 rm -rf "$APP"
