@@ -125,11 +125,9 @@ Apple Developer Programには**加入済み**（Team ID: `Y9B2784T8A` / Ryuuji H
 - [x] 削除をゴミ箱送りに変更（他人のMacで誤削除が起きると復旧不能なため最優先）
 - [x] バンドルIDを`com.example.EmptyFolderCleaner`から`com.ryuujisakura.emptyfoldercleaner`へ
 - [x] README / LICENSE（MIT）
-- [ ] **Developer ID Application 証明書の発行**（このMacには`Apple Development`しか無い）
-      Xcode → Settings → Accounts → Manage Certificates → + → Developer ID Application
-- [ ] **notarytoolの認証情報設定**（App用パスワードを appleid.apple.com で発行し、
-      `xcrun notarytool store-credentials`で保存）
-- [ ] Developer ID署名 + 公証 + stapler、`spctl -a -vv`で検証
+- [x] **Developer ID Application 証明書の発行**（`Developer ID Application: Ryuuji Hara (Y9B2784T8A)`）
+- [x] **notarytoolの認証情報設定**（キーチェーンのプロファイル名は `notary`）
+- [x] Developer ID署名 + 公証 + stapler + `spctl`検証 → `Scripts/release.sh` に自動化済み
 - [ ] リポジトリをPublicに（PrivateだとReleasesも他人はダウンロードできない）
 - [ ] Release noteの修正（**macOS 15からは右クリック→「開く」でのGatekeeper回避が廃止**
       されているので、現在の記述は誤り。公証すればこの注意書き自体が不要になる）
@@ -219,3 +217,22 @@ Apple Developer Programには**加入済み**（Team ID: `Y9B2784T8A` / Ryuuji H
 - テストは18件に増加（ゴミ箱送り、完全削除、入れ子がゴミ箱で1項目になること）。全件パス。
   テスト用のOptionsは`moveToTrash: false`を明示している（毎回ゴミ箱が汚れるのを避けるため）。
   ゴミ箱を検証するテストはUUID入りの名前を使い、後片付けまで行う。
+
+## 完了項目（2026-09-08 その3 / 署名・公証）
+
+- **`Scripts/release.sh` を追加**。プロジェクト生成 → テスト → Developer ID署名ビルド → 署名検査 →
+  アプリの公証 → アプリにstaple → DMG作成 → DMG署名 → DMGの公証 → DMGにstaple →
+  `spctl`判定、までを1本で通す。
+- **アプリとDMGを別々に公証している理由**: DMGだけを公証・stapleすると、中のアプリを
+  `/Applications`に取り出したあと、初回起動時にAppleへのオンライン照会が必要になる。
+  両方stapleしておけばオフラインでも即座に起動できる。
+- **公証が`Invalid`で弾かれた原因と対策**（ハマりどころ）:
+  `com.apple.security.get-task-allow`（デバッガ接続を許可するentitlement）が署名に混入していた。
+  XcodeGenが生成する設定に`CODE_SIGN_INJECT_BASE_ENTITLEMENTS`の指定がなく、既定のYESのままだったため。
+  `project.yml`の`configs.Release`に`CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO`を追加して解消。
+  検査を`release.sh`にも入れてあるので、公証に投げる前に止まる。
+- **`notarytool`は`status: Invalid`でも終了コード0を返す**。`set -e`だけでは失敗に気づけず、
+  そのままstapleまで進んでしまった。`release.sh`の`notarize()`は`status: Accepted`を明示的に
+  判定し、失敗時はその場で`notarytool log`を出す。
+- 結果: アプリ・DMGとも `spctl --assess` が `accepted / source=Notarized Developer ID`。
+  他人のMacでも警告なしに起動できる状態になった。
