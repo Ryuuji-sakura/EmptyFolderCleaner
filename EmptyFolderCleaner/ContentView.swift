@@ -83,7 +83,7 @@ struct ContentView: View {
             }
             .padding(22)
         }
-        .frame(width: 500, height: 570)
+        .frame(width: 500, height: 680)
     }
 
     private var backgroundDog: some View {
@@ -187,6 +187,11 @@ struct ContentView: View {
             }
             .toggleStyle(.checkbox)
             .accessibilityIdentifier("toggle.moveToTrash")
+
+            Text("※「.DS_Store 12-34-56」のように同期の衝突などで名前が変わったものも、名前が.DS_Storeで始まっていれば同じ扱いにします。ごくまれに、自分で.DS_Storeから始まる名前を付けたファイルがあると、それも削除対象に含まれます。")
+                .font(.system(.caption2, design: .rounded))
+                .foregroundStyle(.white.opacity(0.75))
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

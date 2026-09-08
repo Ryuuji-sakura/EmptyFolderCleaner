@@ -118,6 +118,33 @@ final class FolderSweeperTests: XCTestCase {
         XCTAssertTrue(result.emptyFolders.isEmpty)
     }
 
+    // MARK: - The reported bug: sync-conflict-renamed `.DS_Store` variants
+
+    /// A sync client (or a stray manual rename) can leave a `.DS_Store` whose name
+    /// is no longer an exact match, e.g. `.DS_Store 12-34-56-789`. It is still just
+    /// Finder metadata and should count the same as `.DS_Store` itself.
+    func testDSStoreVariantNamesCountAsEmptiness() {
+        makeFile("junk/.DS_Store 00-10-47-434")
+
+        let result = FolderSweeper.scan(root: root, options: bothOn)
+
+        XCTAssertEqual(relativePaths(result.emptyFolders), ["junk"])
+        XCTAssertTrue(result.dsStoreFiles.isEmpty)
+    }
+
+    func testDSStoreVariantIsCollectedAndDeletedWhenItsFolderSurvives() {
+        makeFile("a/.DS_Store 00-12-22-457")
+        makeFile("a/real.txt")
+
+        let scanResult = FolderSweeper.scan(root: root, options: bothOn)
+        XCTAssertEqual(relativePaths(scanResult.dsStoreFiles), ["a/.DS_Store 00-12-22-457"])
+
+        let sweepResult = FolderSweeper.sweep(root: root, options: bothOn)
+        XCTAssertEqual(sweepResult.deletedFiles, 1)
+        XCTAssertTrue(exists("a/real.txt"))
+        XCTAssertFalse(exists("a/.DS_Store 00-12-22-457"))
+    }
+
     func testSymlinkCountsAsContentAndIsNotFollowed() throws {
         let outside = makeDir("outside-target")
         makeFile("outside-target/real.txt")

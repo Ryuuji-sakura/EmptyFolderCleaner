@@ -5,6 +5,14 @@ import Foundation
 enum FolderSweeper {
     static let dsStoreName = ".DS_Store"
 
+    /// Matches `.DS_Store` itself and name variants left behind by sync-conflict
+    /// renames (e.g. `.DS_Store 12-34-56-789`) or a stray manual rename — anything
+    /// whose name starts with `.DS_Store` is still just Finder's folder-view
+    /// metadata, never something a user placed there on purpose.
+    static func isDSStoreVariant(_ url: URL) -> Bool {
+        url.lastPathComponent.hasPrefix(dsStoreName)
+    }
+
     /// Safety net for `sweep`: deleting can expose new empty parents, so we re-scan
     /// and repeat. A real tree settles in two or three rounds; this only stops
     /// runaway loops.
@@ -78,7 +86,7 @@ enum FolderSweeper {
             for entry in entries {
                 if isRealDirectory(entry) {
                     if !visit(entry) { allChildrenEmpty = false }
-                } else if entry.lastPathComponent == dsStoreName {
+                } else if isDSStoreVariant(entry) {
                     localDSStore.append(entry)
                     if !options.ignoreDSStoreForEmptiness { hasRealFile = true }
                 } else {
@@ -99,7 +107,7 @@ enum FolderSweeper {
         for entry in topEntries {
             if isRealDirectory(entry) {
                 visit(entry)
-            } else if options.deleteAllDSStoreFiles, entry.lastPathComponent == dsStoreName {
+            } else if options.deleteAllDSStoreFiles, isDSStoreVariant(entry) {
                 result.dsStoreFiles.append(entry)
             }
         }

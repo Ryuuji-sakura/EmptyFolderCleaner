@@ -251,7 +251,7 @@
 				CODE_SIGN_ENTITLEMENTS = EmptyFolderCleaner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = Y9B2784T8A;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -261,7 +261,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ryuujisakura.emptyfoldercleaner;
 				PRODUCT_MODULE_NAME = EmptyFolderCleaner;
 				PRODUCT_NAME = EmptyFolderCleaner;
@@ -421,7 +421,7 @@
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = Y9B2784T8A;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -431,7 +431,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ryuujisakura.emptyfoldercleaner;
 				PRODUCT_MODULE_NAME = EmptyFolderCleaner;
 				PRODUCT_NAME = EmptyFolderCleaner;
