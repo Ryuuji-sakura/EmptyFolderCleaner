@@ -68,7 +68,7 @@ struct ContentView: View {
                         Button {
                             confirmAndDelete()
                         } label: {
-                            Text("🗑️ 削除する（\(model.totalDeletableCount)件）")
+                            Text("\(model.moveToTrash ? "🗑️ ゴミ箱に入れる" : "⚠️ 完全に削除する")（\(model.totalDeletableCount)件）")
                         }
                         .buttonStyle(PopButtonStyle(colors: [Color.popPink, Color.popCoral]))
                         .keyboardShortcut(.defaultAction)
@@ -78,7 +78,7 @@ struct ContentView: View {
             }
             .padding(22)
         }
-        .frame(width: 500, height: 540)
+        .frame(width: 500, height: 570)
     }
 
     private var backgroundDog: some View {
@@ -174,6 +174,11 @@ struct ContentView: View {
                 optionLabel("フォルダ内すべての .DS_Store を削除する（中身のあるフォルダはそのまま残る）")
             }
             .toggleStyle(.checkbox)
+
+            Toggle(isOn: $model.moveToTrash) {
+                optionLabel("ゴミ箱に入れる（オフにすると完全に削除。元に戻せません）")
+            }
+            .toggleStyle(.checkbox)
         }
     }
 
@@ -259,13 +264,21 @@ struct ContentView: View {
 
     private func confirmAndDelete() {
         let alert = NSAlert()
-        alert.messageText = "削除しますか？"
         var parts: [String] = []
         if !model.emptyFolders.isEmpty { parts.append("空フォルダ \(model.emptyFolders.count) 件") }
         if !model.dsStoreFiles.isEmpty { parts.append(".DS_Store \(model.dsStoreFiles.count) 個") }
-        alert.informativeText = "\(parts.joined(separator: "、"))を削除します。この操作は取り消せません。"
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "削除する")
+        let summary = parts.joined(separator: "、")
+        if model.moveToTrash {
+            alert.messageText = "ゴミ箱に入れますか？"
+            alert.informativeText = "\(summary)をゴミ箱に移動します。間違えたときはゴミ箱から戻せます。"
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "ゴミ箱に入れる")
+        } else {
+            alert.messageText = "完全に削除しますか？"
+            alert.informativeText = "\(summary)を完全に削除します。ゴミ箱には入らず、元に戻せません。"
+            alert.alertStyle = .critical
+            alert.addButton(withTitle: "完全に削除する")
+        }
         alert.addButton(withTitle: "キャンセル")
         if alert.runModal() == .alertFirstButtonReturn {
             model.deleteAll()

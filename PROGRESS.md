@@ -1,6 +1,6 @@
 # 空フォルダ削除ツール - 作業進捗
 
-最終更新: 2026-09-08
+最終更新: 2026-09-08（フリーソフト公開へ方針転換）
 
 ## 概要
 
@@ -114,10 +114,31 @@ xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
 - XCUITestによる本格的なエンドツーエンドUIテストは未実施。現状はロジックのユニットテスト（15件）と、
   `open -a <app> <folder>`＋Accessibility APIでの実機確認で担保している。
 
-## 対応不要と判断（2026-09-03）
+## 方針転換（2026-09-08）: フリーソフトとして公開する方向へ
 
-- **Developer ID署名・公証**: ユーザーが「自分用にする」と判断したため対応不要。
-  配布を前提としないので、現状のローカルad-hoc署名のままで問題ない。
+2026-09-03には「自分用にする」としてDeveloper ID署名・公証を見送っていたが、
+「一人で使うのはもったいない」としてフリーソフト公開を検討することになった。
+Apple Developer Programには**加入済み**（Team ID: `Y9B2784T8A` / Ryuuji Hara、個人）。
+
+### 公開までに必要な作業
+
+- [x] 削除をゴミ箱送りに変更（他人のMacで誤削除が起きると復旧不能なため最優先）
+- [x] バンドルIDを`com.example.EmptyFolderCleaner`から`com.ryuujisakura.emptyfoldercleaner`へ
+- [x] README / LICENSE（MIT）
+- [ ] **Developer ID Application 証明書の発行**（このMacには`Apple Development`しか無い）
+      Xcode → Settings → Accounts → Manage Certificates → + → Developer ID Application
+- [ ] **notarytoolの認証情報設定**（App用パスワードを appleid.apple.com で発行し、
+      `xcrun notarytool store-credentials`で保存）
+- [ ] Developer ID署名 + 公証 + stapler、`spctl -a -vv`で検証
+- [ ] リポジトリをPublicに（PrivateだとReleasesも他人はダウンロードできない）
+- [ ] Release noteの修正（**macOS 15からは右クリック→「開く」でのGatekeeper回避が廃止**
+      されているので、現在の記述は誤り。公証すればこの注意書き自体が不要になる）
+
+### 検討したが未決の項目
+
+- 「フォルダ内すべての.DS_Store削除」のデフォルトON/OFF。他人のMacでFinderの表示設定が
+  一斉にリセットされるのは驚かれる可能性がある。現状はON。
+- 対応OSが macOS 14.0以上。使っているSwiftUI機能は基本的なものなので下げる余地はある。
 
 ## 完了項目（2026-09-03）
 
@@ -177,3 +198,24 @@ xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
   複数パスが必要なケース、削除失敗の報告、immutableフラグ）。全件パス。
 - **アプリの差し替え**: `/Applications/空フォルダ削除.app`を新版で置き換え済み。
   `空フォルダ削除.dmg`も作り直した。
+
+## 完了項目（2026-09-08 その2 / 公開準備）
+
+- **削除をゴミ箱送りに変更**: `FolderSweeper.Options.moveToTrash`（デフォルトtrue）を追加し、
+  `FileManager.trashItem(at:resultingItemURL:)`を使うようにした。サンドボックス下でも
+  user-selectedで得た権限の範囲なら問題なく動く。UIに「ゴミ箱に入れる（オフにすると完全に削除。
+  元に戻せません）」チェックボックスを追加し、確認ダイアログとステータス文言も分岐させた
+  （完全削除のときは`alertStyle = .critical`）。
+- **入れ子の空フォルダがゴミ箱で散らばるバグを修正**: 削除順を「深い順」から「浅い順」に変更。
+  深い順だと`親/子`の両方が個別にゴミ箱へ入り、ゴミ箱にフラットな項目が並んでFinderの
+  「戻す」も壊れる。浅い順にすると親を1回ゴミ箱に入れるだけで子も一緒に運ばれるので、
+  ゴミ箱には1項目だけ・入れ子構造も保たれる。親と一緒に消えた子は`.gone`を返すが、
+  「この操作で消えた」ことに変わりはないので削除件数にはカウントする。
+- **バンドルID変更**: `com.example.EmptyFolderCleaner` → `com.ryuujisakura.emptyfoldercleaner`
+  （書類ポン！の`com.ryuujisakura.shoruipon`に合わせた）。`DEVELOPMENT_TEAM: Y9B2784T8A`も設定。
+  配布後の変更は別アプリ扱いになるので公開前に済ませた。なおバンドルIDが変わると
+  `UserDefaults`も別扱いになるため、設定は初期値に戻る。
+- **README.md / LICENSE（MIT）を追加**。
+- テストは18件に増加（ゴミ箱送り、完全削除、入れ子がゴミ箱で1項目になること）。全件パス。
+  テスト用のOptionsは`moveToTrash: false`を明示している（毎回ゴミ箱が汚れるのを避けるため）。
+  ゴミ箱を検証するテストはUUID入りの名前を使い、後片付けまで行う。

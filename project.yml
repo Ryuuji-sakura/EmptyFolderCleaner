@@ -1,6 +1,6 @@
 name: EmptyFolderCleaner
 options:
-  bundleIdPrefix: com.example
+  bundleIdPrefix: com.ryuujisakura
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
@@ -12,7 +12,8 @@ targets:
       - path: EmptyFolderCleaner
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.EmptyFolderCleaner
+        PRODUCT_BUNDLE_IDENTIFIER: com.ryuujisakura.emptyfoldercleaner
+        DEVELOPMENT_TEAM: Y9B2784T8A
         PRODUCT_NAME: EmptyFolderCleaner
         PRODUCT_MODULE_NAME: EmptyFolderCleaner
         MARKETING_VERSION: "1.0"
@@ -50,7 +51,7 @@ targets:
       - path: EmptyFolderCleaner/FolderSweeper.swift
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.EmptyFolderCleanerTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.ryuujisakura.emptyfoldercleaner.tests
         SWIFT_VERSION: "5.0"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         GENERATE_INFOPLIST_FILE: YES

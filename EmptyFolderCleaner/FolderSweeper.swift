@@ -16,6 +16,9 @@ enum FolderSweeper {
         /// Collect every `.DS_Store` under the root, including those in folders that
         /// survive because they still hold real files.
         var deleteAllDSStoreFiles: Bool
+        /// Move items to the Trash instead of unlinking them. This is the default:
+        /// a folder deleted by mistake is otherwise gone for good.
+        var moveToTrash: Bool = true
     }
 
     struct ScanResult: Sendable, Equatable {
@@ -105,23 +108,26 @@ enum FolderSweeper {
 
     // MARK: - Deleting
 
-    static func delete(_ items: ScanResult) -> DeleteOutcome {
+    static func delete(_ items: ScanResult, moveToTrash: Bool) -> DeleteOutcome {
         let fm = FileManager.default
         var outcome = DeleteOutcome()
 
         for url in items.dsStoreFiles {
-            switch remove(url, using: fm) {
+            switch remove(url, using: fm, moveToTrash: moveToTrash) {
             case .deleted: outcome.deletedFiles += 1
             case .gone: break
             case .failed(let message): outcome.failures.append(Failure(url: url, message: message))
             }
         }
 
-        // Deepest paths first so a parent is genuinely empty by the time it's removed.
-        for url in items.emptyFolders.sorted(by: { $0.pathComponents.count > $1.pathComponents.count }) {
-            switch remove(url, using: fm) {
-            case .deleted: outcome.deletedFolders += 1
-            case .gone: break
+        // Shallowest paths first, so a nested run of empty folders leaves as ONE item
+        // (the topmost folder takes its children with it). Deleting the children
+        // separately would scatter them across the Trash as flat entries and break
+        // Finder's "Put Back". A child that has already gone with its parent reports
+        // `.gone`, and still counts — it did disappear in this operation.
+        for url in items.emptyFolders.sorted(by: { $0.pathComponents.count < $1.pathComponents.count }) {
+            switch remove(url, using: fm, moveToTrash: moveToTrash) {
+            case .deleted, .gone: outcome.deletedFolders += 1
             case .failed(let message): outcome.failures.append(Failure(url: url, message: message))
             }
         }
@@ -134,12 +140,16 @@ enum FolderSweeper {
         case failed(String)
     }
 
-    private static func remove(_ url: URL, using fm: FileManager) -> RemoveResult {
+    private static func remove(_ url: URL, using fm: FileManager, moveToTrash: Bool) -> RemoveResult {
         // Already taken out along with a parent in this same pass.
         guard fm.fileExists(atPath: url.path) else { return .gone }
         clearImmutableFlags(at: url, using: fm)
         do {
-            try fm.removeItem(at: url)
+            if moveToTrash {
+                try fm.trashItem(at: url, resultingItemURL: nil)
+            } else {
+                try fm.removeItem(at: url)
+            }
             return .deleted
         } catch {
             return .failed(error.localizedDescription)
@@ -172,7 +182,7 @@ enum FolderSweeper {
         guard !pending.isEmpty else { return result }
 
         for _ in 0..<maxPasses {
-            let outcome = delete(pending)
+            let outcome = delete(pending, moveToTrash: options.moveToTrash)
             result.deletedFolders += outcome.deletedFolders
             result.deletedFiles += outcome.deletedFiles
             result.failures = outcome.failures

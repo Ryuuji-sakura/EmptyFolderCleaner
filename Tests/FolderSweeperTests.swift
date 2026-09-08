@@ -7,9 +7,11 @@ import XCTest
 final class FolderSweeperTests: XCTestCase {
     private var root: URL!
 
-    private let bothOn = FolderSweeper.Options(ignoreDSStoreForEmptiness: true, deleteAllDSStoreFiles: true)
-    private let emptyOnly = FolderSweeper.Options(ignoreDSStoreForEmptiness: true, deleteAllDSStoreFiles: false)
-    private let strict = FolderSweeper.Options(ignoreDSStoreForEmptiness: false, deleteAllDSStoreFiles: false)
+    // These default to permanent deletion so the suite does not fill the developer's
+    // Trash on every run; the Trash behaviour has its own tests below.
+    private let bothOn = FolderSweeper.Options(ignoreDSStoreForEmptiness: true, deleteAllDSStoreFiles: true, moveToTrash: false)
+    private let emptyOnly = FolderSweeper.Options(ignoreDSStoreForEmptiness: true, deleteAllDSStoreFiles: false, moveToTrash: false)
+    private let strict = FolderSweeper.Options(ignoreDSStoreForEmptiness: false, deleteAllDSStoreFiles: false, moveToTrash: false)
 
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -199,7 +201,7 @@ final class FolderSweeperTests: XCTestCase {
 
         // Deliberately contradictory options — .DS_Store blocks emptiness, yet every
         // .DS_Store is deleted — which forces the multi-pass path.
-        let options = FolderSweeper.Options(ignoreDSStoreForEmptiness: false, deleteAllDSStoreFiles: true)
+        let options = FolderSweeper.Options(ignoreDSStoreForEmptiness: false, deleteAllDSStoreFiles: true, moveToTrash: false)
         let result = FolderSweeper.sweep(root: root, options: options)
 
         XCTAssertEqual(result.deletedFiles, 3)
@@ -243,5 +245,69 @@ final class FolderSweeperTests: XCTestCase {
 
         XCTAssertTrue(result.failures.isEmpty)
         XCTAssertFalse(exists("junk"))
+    }
+
+    // MARK: - Trash
+
+    /// Items are named with a UUID so they can be found again in the shared Trash
+    /// and cleaned up, and so a parallel run can never match someone else's item.
+    private func trashEntries(withPrefix prefix: String) -> [URL] {
+        let trash = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".Trash")
+        let entries = (try? FileManager.default.contentsOfDirectory(at: trash, includingPropertiesForKeys: nil)) ?? []
+        return entries.filter { $0.lastPathComponent.hasPrefix(prefix) }
+    }
+
+    private func emptyTrash(ofItemsWithPrefix prefix: String) {
+        for url in trashEntries(withPrefix: prefix) {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    func testTrashModeMovesFoldersToTheTrashInsteadOfUnlinkingThem() {
+        let name = "sweeper-trash-\(UUID().uuidString)"
+        makeDir(name)
+        defer { emptyTrash(ofItemsWithPrefix: name) }
+
+        var options = bothOn
+        options.moveToTrash = true
+        let result = FolderSweeper.sweep(root: root, options: options)
+
+        XCTAssertEqual(result.deletedFolders, 1)
+        XCTAssertTrue(result.failures.isEmpty)
+        XCTAssertFalse(exists(name), "the folder must be gone from its original place")
+        XCTAssertEqual(trashEntries(withPrefix: name).count, 1, "and recoverable from the Trash")
+    }
+
+    func testTrashModeLeavesOneTrashItemPerNestedRunNotOnePerFolder() {
+        let name = "sweeper-nested-\(UUID().uuidString)"
+        makeDir("\(name)/inner/deeper")
+        defer { emptyTrash(ofItemsWithPrefix: name) }
+
+        var options = bothOn
+        options.moveToTrash = true
+        let result = FolderSweeper.sweep(root: root, options: options)
+
+        XCTAssertEqual(result.deletedFolders, 3, "all three folders are gone")
+        XCTAssertFalse(exists(name))
+        // ...but they arrive in the Trash as one restorable tree, not three loose items.
+        let entries = trashEntries(withPrefix: name)
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: entries[0].appendingPathComponent("inner/deeper").path
+        ), "the nesting is preserved inside the trashed folder")
+    }
+
+    func testPermanentModeLeavesNothingInTheTrash() {
+        let name = "sweeper-permanent-\(UUID().uuidString)"
+        makeDir(name)
+        defer { emptyTrash(ofItemsWithPrefix: name) }
+
+        var options = bothOn
+        options.moveToTrash = false
+        let result = FolderSweeper.sweep(root: root, options: options)
+
+        XCTAssertEqual(result.deletedFolders, 1)
+        XCTAssertFalse(exists(name))
+        XCTAssertTrue(trashEntries(withPrefix: name).isEmpty)
     }
 }

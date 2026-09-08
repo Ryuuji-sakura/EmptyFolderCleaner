@@ -34,13 +34,21 @@ final class EmptyFolderModel: ObservableObject {
         }
     }
 
+    /// Move everything to the Trash rather than unlinking it. On by default: this
+    /// app deletes folders, and a mistake has to stay recoverable.
+    @Published var moveToTrash: Bool {
+        didSet { UserDefaults.standard.set(moveToTrash, forKey: Self.moveToTrashKey) }
+    }
+
     private static let includeDSStoreOnlyFoldersKey = "includeDSStoreOnlyFolders"
     private static let deleteAllDSStoreFilesKey = "deleteAllDSStoreFiles"
+    private static let moveToTrashKey = "moveToTrash"
 
     private init() {
         let defaults = UserDefaults.standard
         includeDSStoreOnlyFolders = defaults.object(forKey: Self.includeDSStoreOnlyFoldersKey) as? Bool ?? true
         deleteAllDSStoreFiles = defaults.object(forKey: Self.deleteAllDSStoreFilesKey) as? Bool ?? true
+        moveToTrash = defaults.object(forKey: Self.moveToTrashKey) as? Bool ?? true
     }
 
     var totalDeletableCount: Int { emptyFolders.count + dsStoreFiles.count }
@@ -51,7 +59,8 @@ final class EmptyFolderModel: ObservableObject {
     var sweepOptions: FolderSweeper.Options {
         FolderSweeper.Options(
             ignoreDSStoreForEmptiness: includeDSStoreOnlyFolders || deleteAllDSStoreFiles,
-            deleteAllDSStoreFiles: deleteAllDSStoreFiles
+            deleteAllDSStoreFiles: deleteAllDSStoreFiles,
+            moveToTrash: moveToTrash
         )
     }
 
@@ -98,8 +107,9 @@ final class EmptyFolderModel: ObservableObject {
         guard hasDeletableItems, let root = targetFolder else { return }
         let options = sweepOptions
         let initial = FolderSweeper.ScanResult(emptyFolders: emptyFolders, dsStoreFiles: dsStoreFiles)
+        let usingTrash = moveToTrash
         isDeleting = true
-        statusMessage = "削除中..."
+        statusMessage = usingTrash ? "ゴミ箱に移動中..." : "削除中..."
 
         Task.detached(priority: .userInitiated) {
             let result = FolderSweeper.sweep(root: root, options: options, initial: initial)
@@ -107,7 +117,7 @@ final class EmptyFolderModel: ObservableObject {
                 self.emptyFolders = result.remaining.emptyFolders
                 self.dsStoreFiles = result.remaining.dsStoreFiles
                 self.isDeleting = false
-                self.statusMessage = Self.deletedSummary(result)
+                self.statusMessage = Self.deletedSummary(result, movedToTrash: usingTrash)
             }
         }
     }
@@ -127,14 +137,15 @@ final class EmptyFolderModel: ObservableObject {
         }
     }
 
-    nonisolated static func deletedSummary(_ result: FolderSweeper.SweepResult) -> String {
+    nonisolated static func deletedSummary(_ result: FolderSweeper.SweepResult, movedToTrash: Bool) -> String {
         var parts: [String] = []
         if result.deletedFolders > 0 { parts.append("空フォルダ \(result.deletedFolders) 件") }
         if result.deletedFiles > 0 { parts.append(".DS_Store \(result.deletedFiles) 個") }
-        let done = parts.isEmpty ? "削除できるものはありませんでした。" : "\(parts.joined(separator: "、"))を削除しました。"
+        let verb = movedToTrash ? "をゴミ箱に入れました" : "を完全に削除しました"
+        let done = parts.isEmpty ? "削除できるものはありませんでした。" : "\(parts.joined(separator: "、"))\(verb)。"
         guard !result.failures.isEmpty else { return done }
         let names = result.failures.prefix(3).map { $0.url.lastPathComponent }.joined(separator: "、")
         let more = result.failures.count > 3 ? " ほか\(result.failures.count - 3)件" : ""
-        return "\(done) \(result.failures.count) 件は削除できませんでした（\(names)\(more)）。"
+        return "\(done) \(result.failures.count) 件は処理できませんでした（\(names)\(more)）。"
     }
 }
