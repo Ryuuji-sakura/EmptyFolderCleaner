@@ -49,7 +49,9 @@ targets:
       path: Info.plist
       properties:
         LSApplicationCategoryType: public.app-category.utilities
-        NSHumanReadableCopyright: Copyright © 2026 Ryuuji Hara. All rights reserved.
+        # サポートサイト（ryuuji-sakura.github.io）の表記に合わせて屋号で統一。
+        # LICENSE の MIT 著作権者は法的な記載なので Ryuuji Hara のまま。
+        NSHumanReadableCopyright: © 2026 半歩舎
         CFBundleDisplayName: 空フォルダ削除
         # 暗号化を使っていないことを宣言しておくと、提出のたびに
         # App Store Connect の輸出コンプライアンス質問に答えずに済む。
