@@ -470,6 +470,18 @@ struct ContentView: View {
             alert.addButton(withTitle: "完全に削除する")
         }
         alert.addButton(withTitle: "キャンセル")
+
+        // Escape でキャンセルできるようにする。NSAlert が Escape を自動で割り当てるのは
+        // ボタン名が英語の "Cancel" のときだけで、「キャンセル」では付かない。
+        alert.buttons[1].keyEquivalent = "\u{1b}"
+        if !model.moveToTrash {
+            // 完全削除は元に戻せない。既定では最初に足したボタンが Return に割り当たる
+            // ので、Enter の一撃で実行されてしまう。ここでは既定ボタンを無くし、
+            // 必ずクリックさせる。1つのボタンに Return と Escape は同居できないため、
+            // より反射的に押される Escape のほうをキャンセルに残している。
+            alert.buttons[0].keyEquivalent = ""
+        }
+
         // ダイアログを出している間にDockへのドロップなどで対象が変わりうるので、
         // ユーザーが承認したのがどのフォルダの何件だったかを控えて渡す。
         let approvedRoot = model.targetFolder

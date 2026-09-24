@@ -167,6 +167,15 @@ final class EmptyFolderCleanerUITests: XCTestCase {
         XCTFail("表示が『\(wanted)』になりませんでした。実際: 「\(seen)」", file: file, line: line)
     }
 
+    private func waitForDisappearance(_ element: XCUIElement, timeout: TimeInterval = 10) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if !element.exists { return true }
+            usleep(200_000)
+        }
+        return false
+    }
+
     private func row(_ app: XCUIApplication, _ relativePath: String) -> XCUIElement {
         app.descendants(matching: .any)["row.\(relativePath)"]
     }
@@ -284,6 +293,32 @@ final class EmptyFolderCleanerUITests: XCTestCase {
         waitForStatus(app, contains: "完全に削除しました")
         XCTAssertFalse(exists("消してよい"), "選んだフォルダが残っています")
         XCTAssertTrue(exists("残しておきたい"), "チェックを外したフォルダが消えました")
+
+        setToggle(app, "toggle.moveToTrash", to: true)
+    }
+
+    /// 完全削除は元に戻せないので、Enter の一撃で実行されてはいけない。
+    /// Escape はどの macOS のダイアログでも効くべきなので、そちらは残す。
+    func testPermanentDeleteHasNoDefaultButtonAndEscapeCancels() throws {
+        makeDir("うっかり消したくない")
+
+        let app = try launchApp()
+        setToggle(app, "toggle.allDSStoreFiles", to: false)
+        setToggle(app, "toggle.moveToTrash", to: false)
+        waitForStatus(app, contains: "1 件の空フォルダ")
+
+        app.buttons["button.delete"].click()
+        let dialog = try confirmationDialog(of: app)
+        XCTAssertTrue(dialog.buttons["完全に削除する"].waitForExistence(timeout: 10))
+
+        app.typeKey(.return, modifierFlags: [])
+        usleep(500_000)
+        XCTAssertTrue(dialog.exists, "Enter でダイアログが閉じました。完全削除に既定ボタンが残っています")
+        XCTAssertTrue(exists("うっかり消したくない"), "Enter だけで削除されました")
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(waitForDisappearance(dialog), "Escape でダイアログが閉じません")
+        XCTAssertTrue(exists("うっかり消したくない"), "キャンセルしたのに削除されています")
 
         setToggle(app, "toggle.moveToTrash", to: true)
     }
