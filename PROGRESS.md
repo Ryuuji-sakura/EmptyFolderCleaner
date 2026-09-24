@@ -393,9 +393,19 @@ Mac App Store への無料アプリとしての提出を目指すことにした
 - テストを20件→24件に。パッケージ、隠しフォルダ、偽の `.DS_Store` 名、
   スキャン後に出現したファイルの回帰テストを追加。
 
-### 既知の問題
+### XCUITestが動かなくなったときの対処（2026-09-24に実際に踏んだ）
 
-- **XCUITestが実行できない**。`Failed to initialize for UI testing: Timed out while enabling
-  automation mode.` プロジェクトを `Claude Code/Mac/空フォルダ削除/` へ移動したことで、
-  テストランナーのパスが変わり自動化の許可が外れた可能性が高い。
-  システム設定 → プライバシーとセキュリティ での許可が必要。ユニットテスト24件は通っている。
+症状は2段階あり、原因が別なので切り分けが要る。
+
+1. **`Failed to initialize for UI testing: Timed out while enabling automation mode.`**
+   コマンドラインからだと許可ダイアログを出せずにタイムアウトする。
+   **Xcodeでプロジェクトを開いて一度 ⌘U を実行する**と、macOSが許可を求めるダイアログを出す。
+   許可すれば以降はコマンドラインからも動く。成功したかは
+   `/usr/bin/log show --last 1h ... | grep "enabling Automation Mode"` で確認できる
+   （`log` はシェル関数に食われることがあるのでフルパスで叩くこと）。
+2. **`アプリを終了できませんでした`（テストの `terminateApp` が15秒粘って失敗）**
+   Xcodeのデバッガがアプリを掴んだまま一時停止していると起きる。Xcodeに
+   `Paused EmptyFolderCleaner` / `Thread 1: signal SIGTERM` と出ている状態。
+   **デバッガがSIGTERMを横取りしてプロセスを停止させる**ので、`pkill`（SIGTERM）でも
+   `pkill -9`（SIGKILL）でも消えない。Xcodeで **⌘.（Stop）** を押すしかない。
+   コマンドラインでテストを回す前に、Xcode側のセッションが残っていないか確認すること。
