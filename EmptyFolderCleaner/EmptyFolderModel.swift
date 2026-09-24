@@ -12,7 +12,9 @@ final class EmptyFolderModel: ObservableObject {
     @Published private(set) var dsStoreFiles: [URL] = []
     @Published private(set) var isScanning = false
     @Published private(set) var isDeleting = false
-    @Published var statusMessage = "フォルダをドラッグ＆ドロップするか、選択してください"
+    // すぐ上のドロップ領域と同じことを繰り返しても情報が増えない。フォルダを消すアプリで
+    // 最初に伝えるべきなのは「選んだフォルダ自体は消えない」という一点。
+    @Published var statusMessage = "選んだフォルダの中から、空のフォルダを探します。選んだフォルダ自体は消えません。"
     /// True right after a delete that removed at least one `.DS_Store`, so the UI can
     /// warn that Finder may recreate it the moment this folder is viewed again —
     /// otherwise a user who checks in Finder sees it "come back" and assumes the

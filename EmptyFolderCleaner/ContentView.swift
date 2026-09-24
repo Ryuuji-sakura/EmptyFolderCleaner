@@ -38,6 +38,7 @@ private struct PopButtonStyle: ButtonStyle {
 struct ContentView: View {
     @EnvironmentObject private var model: EmptyFolderModel
     @State private var isTargeted = false
+    @State private var showsDSStoreHelp = false
 
     var body: some View {
         ZStack {
@@ -83,7 +84,7 @@ struct ContentView: View {
             }
             .padding(22)
         }
-        .frame(width: 500, height: 680)
+        .frame(width: 500, height: 620)
     }
 
     private var backgroundDog: some View {
@@ -103,7 +104,7 @@ struct ContentView: View {
         HStack(spacing: 10) {
             Text("🧹")
                 .font(.system(size: 34))
-            Text("空フォルダ掃除")
+            Text("空フォルダ削除")
                 .font(.system(size: 26, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
@@ -169,33 +170,70 @@ struct ContentView: View {
     private var optionToggles: some View {
         VStack(alignment: .leading, spacing: 6) {
             // Deleting every .DS_Store implies this one, so it is shown forced on.
-            Toggle(isOn: Binding(
-                get: { model.deleteAllDSStoreFiles || model.includeDSStoreOnlyFolders },
-                set: { model.includeDSStoreOnlyFolders = $0 }
-            )) {
-                optionLabel(".DS_Storeしか入っていないフォルダも空とみなして削除する")
+            HStack(spacing: 6) {
+                Toggle(isOn: Binding(
+                    get: { model.deleteAllDSStoreFiles || model.includeDSStoreOnlyFolders },
+                    set: { model.includeDSStoreOnlyFolders = $0 }
+                )) {
+                    optionLabel("Finderの設定ファイルだけが残っているフォルダも、空として削除する")
+                }
+                .toggleStyle(.checkbox)
+                .disabled(model.deleteAllDSStoreFiles)
+                .accessibilityIdentifier("toggle.dsStoreOnlyFolders")
+
+                helpButton
             }
-            .toggleStyle(.checkbox)
-            .disabled(model.deleteAllDSStoreFiles)
-            .accessibilityIdentifier("toggle.dsStoreOnlyFolders")
 
             Toggle(isOn: $model.deleteAllDSStoreFiles) {
-                optionLabel("フォルダ内すべての .DS_Store を削除する（中身のあるフォルダはそのまま残る）")
+                optionLabel("Finderの設定ファイルをすべて削除する（フォルダと中のファイルは残ります）")
             }
             .toggleStyle(.checkbox)
             .accessibilityIdentifier("toggle.allDSStoreFiles")
 
             Toggle(isOn: $model.moveToTrash) {
-                optionLabel("ゴミ箱に入れる（オフにすると完全に削除。元に戻せません）")
+                optionLabel("削除したものをゴミ箱に入れる（オフにすると元に戻せません）")
             }
             .toggleStyle(.checkbox)
             .accessibilityIdentifier("toggle.moveToTrash")
-
-            Text("※「.DS_Store 12-34-56」のように同期の衝突で名前が変わったものも同じ扱いにします。中身を確かめてFinderが作ったものだけを対象にするので、自分で.DS_Storeから始まる名前を付けたファイルは削除されません。")
-                .font(.system(.caption2, design: .rounded))
-                .foregroundStyle(.white.opacity(0.75))
-                .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// 詳しい説明は常時表示せず、ここに畳む。グラデーション背景の上の小さな文字は
+    /// そもそも読みにくいうえ、初見の人に必要なのは「押せば読める」ことだけ。
+    private var helpButton: some View {
+        Button {
+            showsDSStoreHelp = true
+        } label: {
+            Image(systemName: "questionmark.circle.fill")
+                .font(.system(size: 14))
+                .foregroundStyle(.white.opacity(0.9))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Finderの設定ファイルについての説明")
+        .accessibilityIdentifier("button.dsStoreHelp")
+        .popover(isPresented: $showsDSStoreHelp, arrowEdge: .bottom) {
+            dsStoreHelp
+        }
+    }
+
+    private var dsStoreHelp: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("「Finderの設定ファイル」とは")
+                .font(.headline)
+
+            Text("正式には「.DS_Store」という名前の、目に見えないファイルです。フォルダを開いたときの並び順、ウィンドウの大きさ、アイコンの位置などを覚えておくために、Finderが自動で作ります。")
+
+            Text("消してもフォルダ名や中のファイルには影響しません。次にそのフォルダをFinderで開くと、自動的に作り直されます。")
+
+            Divider()
+
+            Text("NASやクラウド同期を使っていると、名前が「.DS_Store 12-34-56」のように変わっていることがあります。これも同じものとして扱いますが、ファイルの中身を確認してFinderが作ったものだけを消すため、ご自分で付けた名前のファイルが消えることはありません。")
+                .foregroundStyle(.secondary)
+        }
+        .font(.callout)
+        .multilineTextAlignment(.leading)
+        .frame(width: 340, alignment: .leading)
+        .padding(18)
     }
 
     private func optionLabel(_ text: String) -> some View {

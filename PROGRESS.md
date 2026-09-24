@@ -409,3 +409,101 @@ Mac App Store への無料アプリとしての提出を目指すことにした
    **デバッガがSIGTERMを横取りしてプロセスを停止させる**ので、`pkill`（SIGTERM）でも
    `pkill -9`（SIGKILL）でも消えない。Xcodeで **⌘.（Stop）** を押すしかない。
    コマンドラインでテストを回す前に、Xcode側のセッションが残っていないか確認すること。
+
+## 完了項目（2026-09-24 / フェーズ2の前半: MAS提出の下準備と文言整理）
+
+### 署名設定の分離
+
+`Release`（Developer ID・公証あり）と `ReleaseMAS`（Mac App Store 提出用）で
+`CODE_SIGN_INJECT_BASE_ENTITLEMENTS` の要求が正反対なので、configuration を分けた。
+
+- `Release: NO` — これを外さないと `get-task-allow` が混入して公証が Invalid になる
+- `ReleaseMAS: YES` — こちらは逆に、NO にするとプロビジョニングプロファイル由来の
+  `com.apple.application-identifier` まで落ち、App Store Connect が
+  Invalid Code Signing Entitlements で弾く
+
+**注意: この設定の正しさはまだ証明できていない。** 開発用証明書で `build` しただけだと
+`get-task-allow` が付いたままになる（確認済み）。`archive` + 配布用プロファイルで
+署名して初めて `application-identifier` が入る。Apple Distribution 証明書の発行後に
+`archive` して `codesign -d --entitlements -` で目視確認すること。
+
+### Info.plist の整備
+
+- `developmentLanguage: ja`（`CFBundleDevelopmentRegion` が `en` のままだと、
+  英語環境のMacで「英語アプリのはずが日本語」という扱いになる）
+- `NSHumanReadableCopyright` を設定（従来は空文字列で、キーごと消えていた）
+- `ITSAppUsesNonExemptEncryption: false`（提出のたびの輸出コンプライアンス質問を省ける）
+
+### アプリ名の3重不一致を解消（ガイドライン 2.3.7）
+
+メニューバー `EmptyFolderCleaner` / Finder `空フォルダ削除` / 画面内 `空フォルダ掃除` と
+3つ存在していた。画面内を「空フォルダ削除」に統一し、メニューバーは
+`ja.lproj/InfoPlist.strings` で `CFBundleName` を日本語に上書きした。
+`PRODUCT_NAME` は英語のまま（日本語にすると codesign が落ちる。技術メモ1参照）。
+
+### 文言を使用者向けに平易化
+
+`.DS_Store` という語が3つ中2つのチェックボックスと注記全部に出ていた。
+非エンジニア向けに作ったアプリなのに画面の大半が専門用語だったため、
+「Finderの設定ファイル」という言い方に変え、詳しい説明は ⓘ ボタンの popover に格納した
+（グラデーション背景の上の caption2 は元々読めていなかったので、可読性も改善する）。
+最初のステータスも、ドロップ領域と同じ内容の繰り返しをやめ、
+「選んだフォルダ自体は消えません」という一番重要な一点に変えた。
+
+### 注意: UIテストが開発者自身の設定を書き換える
+
+UIテストはアプリと同じバンドルIDの `UserDefaults` を触るため、
+テストを流すと **開発マシンの設定が書き換わる**。実際に `moveToTrash = 0`（完全削除）に
+なっていた。そのまま使うと削除が復元不能になるので、`defaults write
+com.ryuujisakura.emptyfoldercleaner moveToTrash -bool true` で戻した。
+根本対策は、テスト時だけ別の UserDefaults suite を使うようアプリ側に逃げ道を作ること。
+
+## 完了項目（2026-09-24 / フェーズ2の後半: MAS提出経路の確立）
+
+証明書3種が揃い、`.pkg` の書き出しと検証まで通った。**提出はまだしていない。**
+
+- `Apple Distribution`（アプリ本体の署名）
+- `3rd Party Mac Developer Installer`（`.pkg` の署名。`security find-identity` には
+  出てこないので、確認は `security find-certificate -c "3rd Party Mac Developer Installer"`）
+- `Developer ID Application`（GitHub配布用。MAS承認までは残す）
+
+### `CODE_SIGN_INJECT_BASE_ENTITLEMENTS` の分離が効いていることを実証した
+
+`build` しただけでは開発用証明書で署名されるため検証できない。`archive` →
+`exportArchive`（`method: app-store-connect`）まで通して初めて配布用署名になる。
+書き出した `.pkg` の中身を確認した結果:
+
+```
+com.apple.application-identifier    = Y9B2784T8A.com.ryuujisakura.emptyfoldercleaner
+com.apple.developer.team-identifier = Y9B2784T8A
+com.apple.security.app-sandbox      = 1
+com.apple.security.files.user-selected.read-write = 1
+（get-task-allow は無し）
+Authority = Apple Distribution: Ryuuji Hara (Y9B2784T8A)
+embedded.provisionprofile あり
+```
+
+### `Scripts/appstore.sh` を追加
+
+生成 → テスト → archive → export → 検証 まで。`release.sh`（Developer ID）とは別物で、
+公証も stapler も DMG も使わない。**アップロードはしない**（提出は取り消せないので、
+最後に手順を表示するだけにして、送るかどうかは人が決める）。
+
+検証は素通りさせない作りにしてある。`application-identifier` が無い、`get-task-allow` が
+ある、プロファイルが埋め込まれていない、のいずれかで止まる。これらは project.yml の
+設定ひとつで簡単に壊れるため。
+
+### App ID の登録について
+
+`exportArchive` に `-allowProvisioningUpdates` を付けると、App ID
+`com.ryuujisakura.emptyfoldercleaner` の登録と Mac App Store 用プロファイルの作成を
+Xcode が自動で行う（証明書が既にあれば新規発行はされない）。今回これで作成済み。
+
+### 残っている作業
+
+- App Store Connect にアプリを登録（マイApp → + → 新規App、macOS、日本語、
+  バンドルID `com.ryuujisakura.emptyfoldercleaner`）
+- スクリーンショット（1280×800 以上）。現在のウィンドウは 500×620 固定なので、
+  そのまま貼ると余白だらけになる。レビュー指摘のリサイズ対応が前提
+- レビュー指摘のフェーズ3（4.2対策・コントラスト改修・進捗とキャンセル・
+  英語ローカライズ・破壊的ダイアログの既定ボタン）

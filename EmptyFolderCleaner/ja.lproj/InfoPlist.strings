@@ -1,0 +1,5 @@
+/* メニューバーに出る名前。PRODUCT_NAME を日本語にすると、このマシンでは
+   ビルド時の codesign が毎回失敗する（PROGRESS.md の技術メモ1を参照）ため、
+   PRODUCT_NAME は英語のままにして、表示名だけここで日本語にしている。 */
+"CFBundleName" = "空フォルダ削除";
+"CFBundleDisplayName" = "空フォルダ削除";

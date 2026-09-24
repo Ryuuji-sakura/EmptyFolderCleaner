@@ -4,6 +4,15 @@ options:
   deploymentTarget:
     macOS: "14.0"
   createIntermediateGroups: true
+  # UIが全編日本語なので、バンドルもそう名乗る。`en` のままだと英語環境のMacで
+  # 「英語のアプリのはずが日本語」という扱いになり、App Storeのローカライズ設定とも食い違う。
+  developmentLanguage: ja
+# Release は Developer ID 配布（公証あり）、ReleaseMAS は Mac App Store 提出用。
+# 署名まわりの要求が正反対なので、同じ設定では両立しない。
+configs:
+  Debug: debug
+  Release: release
+  ReleaseMAS: release
 targets:
   EmptyFolderCleaner:
     type: application
@@ -26,15 +35,25 @@ targets:
         DEVELOPMENT_ASSET_PATHS: ""
       configs:
         Release:
-          # これを外さないと com.apple.security.get-task-allow（デバッガ接続を許す
-          # entitlement）が署名に混入し、公証が Invalid で弾かれる。
+          # Developer ID 配布用。これを外さないと
+          # com.apple.security.get-task-allow（デバッガ接続を許す entitlement）が
+          # 署名に混入し、公証が Invalid で弾かれる。
           CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+        ReleaseMAS:
+          # Mac App Store 提出用。こちらは逆に YES が要る。NO にすると
+          # プロビジョニングプロファイル由来の com.apple.application-identifier まで
+          # 落ちてしまい、App Store Connect が Invalid Code Signing Entitlements で弾く。
+          CODE_SIGN_INJECT_BASE_ENTITLEMENTS: YES
+          CODE_SIGN_STYLE: Automatic
     info:
       path: Info.plist
       properties:
         LSApplicationCategoryType: public.app-category.utilities
-        NSHumanReadableCopyright: ""
+        NSHumanReadableCopyright: Copyright © 2026 Ryuuji Hara. All rights reserved.
         CFBundleDisplayName: 空フォルダ削除
+        # 暗号化を使っていないことを宣言しておくと、提出のたびに
+        # App Store Connect の輸出コンプライアンス質問に答えずに済む。
+        ITSAppUsesNonExemptEncryption: false
         # これが無いと Info.plist にはxcodegenの既定値 1.0 が焼き込まれ、
         # MARKETING_VERSION を上げても配布物のバージョンが変わらない。
         CFBundleShortVersionString: $(MARKETING_VERSION)
