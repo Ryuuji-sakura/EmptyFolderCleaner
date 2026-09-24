@@ -27,6 +27,9 @@ APP="$ROOT/$APP_DISPLAY_NAME.app"
 DMG="$ROOT/$APP_DISPLAY_NAME.dmg"
 ZIP="$BUILD_DIR/$SCHEME-notarize.zip"
 STAGE="$BUILD_DIR/dmg-stage"
+# GitHubへのアップロード用。全角だけのファイル名を上げるとGitHub側で `default.dmg` に
+# 丸められてしまうため、ASCII名のコピーを用意しておく（表示名はアップロード時のラベルで補う）。
+UPLOAD_DMG=""
 
 step() { printf '\n\033[1;34m==> %s\033[0m\n' "$1"; }
 
@@ -119,4 +122,19 @@ spctl --assess --type execute --verbose=4 "$APP"
 echo "--- DMG ---"
 spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG"
 
+step "アップロード用のASCII名コピーを作成"
+VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist")"
+UPLOAD_DMG="$BUILD_DIR/$SCHEME-$VERSION.dmg"
+cp "$DMG" "$UPLOAD_DMG"
+echo "$UPLOAD_DMG"
+
 printf '\n\033[1;32m完了: %s\033[0m\n' "$DMG"
+cat <<EOF
+
+GitHubへリリースするには（ファイル名は必ずASCII名を使うこと。
+全角だけの名前で上げると default.dmg に丸められる）:
+
+  gh release create v$VERSION "$UPLOAD_DMG#$APP_DISPLAY_NAME.dmg (v$VERSION)" \\
+      --title "v$VERSION $APP_DISPLAY_NAME" --notes-file <リリースノート.md>
+
+EOF
