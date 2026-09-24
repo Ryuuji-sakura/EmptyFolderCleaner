@@ -43,6 +43,19 @@ final class FolderSweeperTests: XCTestCase {
         return url
     }
 
+    /// Writes a file that really is a `.DS_Store`: Finder's buddy-allocator format
+    /// starts with a 0x00000001 alignment word followed by the ASCII tag "Bud1".
+    /// Variant names are only treated as Finder metadata when they carry this.
+    @discardableResult
+    private func makeDSStore(_ path: String) -> URL {
+        let url = root.appendingPathComponent(path)
+        try! FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        var bytes = Data([0x00, 0x00, 0x00, 0x01, 0x42, 0x75, 0x64, 0x31])
+        bytes.append(Data(repeating: 0, count: 32))
+        try! bytes.write(to: url)
+        return url
+    }
+
     private func exists(_ path: String) -> Bool {
         FileManager.default.fileExists(atPath: root.appendingPathComponent(path).path)
     }
@@ -124,7 +137,7 @@ final class FolderSweeperTests: XCTestCase {
     /// is no longer an exact match, e.g. `.DS_Store 12-34-56-789`. It is still just
     /// Finder metadata and should count the same as `.DS_Store` itself.
     func testDSStoreVariantNamesCountAsEmptiness() {
-        makeFile("junk/.DS_Store 00-10-47-434")
+        makeDSStore("junk/.DS_Store 00-10-47-434")
 
         let result = FolderSweeper.scan(root: root, options: bothOn)
 
@@ -133,7 +146,7 @@ final class FolderSweeperTests: XCTestCase {
     }
 
     func testDSStoreVariantIsCollectedAndDeletedWhenItsFolderSurvives() {
-        makeFile("a/.DS_Store 00-12-22-457")
+        makeDSStore("a/.DS_Store 00-12-22-457")
         makeFile("a/real.txt")
 
         let scanResult = FolderSweeper.scan(root: root, options: bothOn)
@@ -143,6 +156,77 @@ final class FolderSweeperTests: XCTestCase {
         XCTAssertEqual(sweepResult.deletedFiles, 1)
         XCTAssertTrue(exists("a/real.txt"))
         XCTAssertFalse(exists("a/.DS_Store 00-12-22-457"))
+    }
+
+    /// The name alone must never be enough. A file the user deliberately called
+    /// `.DS_Store メモ.txt` is their data, and treating it as Finder metadata would
+    /// make its folder look empty and delete both.
+    func testFileNamedLikeDSStoreButWithoutTheMagicKeepsItsFolder() {
+        makeFile("メモ置き場/.DS_Store メモ.txt", contents: "これは大事なメモです。")
+        makeFile("書庫/.DS_Store_backup_2024.zip", contents: "PK...")
+
+        let scanResult = FolderSweeper.scan(root: root, options: bothOn)
+        XCTAssertTrue(scanResult.emptyFolders.isEmpty, "ユーザーのファイルを持つフォルダが空と判定されています")
+        XCTAssertTrue(scanResult.dsStoreFiles.isEmpty)
+
+        let sweepResult = FolderSweeper.sweep(root: root, options: bothOn)
+        XCTAssertEqual(sweepResult.deletedFolders, 0)
+        XCTAssertEqual(sweepResult.deletedFiles, 0)
+        XCTAssertTrue(exists("メモ置き場/.DS_Store メモ.txt"))
+        XCTAssertTrue(exists("書庫/.DS_Store_backup_2024.zip"))
+    }
+
+    // MARK: - Packages and hidden folders are opaque
+
+    /// `.app`, `.photoslibrary`, `.xcodeproj` and friends are directories on disk but
+    /// single items to the user, and their empty internal folders are load bearing —
+    /// removing one breaks the code signature of the enclosing app.
+    func testPackageInternalsAreNeverTouched() throws {
+        makeDir("アプリ置き場/Fake.app/Contents/MacOS")
+        makeFile("アプリ置き場/Fake.app/Contents/Resources/data.txt")
+
+        let result = FolderSweeper.scan(root: root, options: bothOn)
+
+        XCTAssertTrue(result.emptyFolders.isEmpty, "パッケージの中に入っています: \(relativePaths(result.emptyFolders))")
+        FolderSweeper.sweep(root: root, options: bothOn)
+        XCTAssertTrue(exists("アプリ置き場/Fake.app/Contents/MacOS"))
+    }
+
+    /// A repository's `.git/refs/tags` is empty until the first tag. Deleting it (and
+    /// every sibling like it, across every repo under a chosen folder) is not what
+    /// "tidy up empty folders" means to anyone.
+    func testHiddenDirectoriesAreNeverEnteredOrDeleted() {
+        makeDir("ぎっと/.git/refs/tags")
+        makeFile("ぎっと/.git/HEAD")
+
+        let result = FolderSweeper.scan(root: root, options: bothOn)
+
+        XCTAssertTrue(result.emptyFolders.isEmpty, "隠しフォルダに入っています: \(relativePaths(result.emptyFolders))")
+        FolderSweeper.sweep(root: root, options: bothOn)
+        XCTAssertTrue(exists("ぎっと/.git/refs/tags"))
+    }
+
+    // MARK: - The scan/delete window
+
+    /// `sweep` scans and then deletes, and a file can land in between — a download
+    /// finishing, a sync client writing. A recursive removeItem would take it along
+    /// without a word, so permanent deletion goes through rmdir(2), which refuses.
+    func testFileCreatedAfterTheScanIsNotSweptAwayWithItsFolder() {
+        makeDir("ダウンロード中")
+        var permanent = bothOn
+        permanent.moveToTrash = false
+
+        let stale = FolderSweeper.scan(root: root, options: permanent)
+        XCTAssertEqual(relativePaths(stale.emptyFolders), ["ダウンロード中"])
+
+        // The world moves on between the scan and the delete.
+        makeFile("ダウンロード中/請求書.pdf", contents: "PDF")
+
+        let outcome = FolderSweeper.delete(stale, options: permanent)
+
+        XCTAssertEqual(outcome.deletedFolders, 0)
+        XCTAssertEqual(relativePaths(outcome.skipped), ["ダウンロード中"])
+        XCTAssertTrue(exists("ダウンロード中/請求書.pdf"), "スキャン後に置かれたファイルが消えました")
     }
 
     func testSymlinkCountsAsContentAndIsNotFollowed() throws {
@@ -257,10 +341,12 @@ final class FolderSweeperTests: XCTestCase {
 
         let result = FolderSweeper.sweep(root: root, options: bothOn)
 
-        // The child can't be unlinked from a read-only parent, and the parent's own
-        // recursive removal trips over the same child.
-        XCTAssertEqual(result.failures.count, 2)
-        XCTAssertEqual(Set(result.failures.map { $0.url.lastPathComponent }), ["child", "locked"])
+        // The child can't be unlinked from a read-only parent. The parent itself is
+        // then still occupied, so rmdir refuses it — reported as left alone rather
+        // than as a second failure, because nothing was forced.
+        XCTAssertEqual(result.failures.count, 1)
+        XCTAssertEqual(result.failures.first?.url.lastPathComponent, "child")
+        XCTAssertEqual(relativePaths(result.skipped), ["locked"])
         XCTAssertEqual(relativePaths(result.remaining.emptyFolders), ["locked", "locked/child"])
     }
 

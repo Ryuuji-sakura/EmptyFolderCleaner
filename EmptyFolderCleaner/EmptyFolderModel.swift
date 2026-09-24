@@ -64,7 +64,10 @@ final class EmptyFolderModel: ObservableObject {
         // that is how the UI tests pin the options they are exercising.
         defaults.register(defaults: [
             Self.includeDSStoreOnlyFoldersKey: true,
-            Self.deleteAllDSStoreFilesKey: true,
+            // Off by default: wiping the `.DS_Store` of folders that keep their
+            // contents resets their Finder view settings, which is not what someone
+            // who asked to tidy up empty folders expects to happen.
+            Self.deleteAllDSStoreFilesKey: false,
             Self.moveToTrashKey: true,
         ])
         includeDSStoreOnlyFolders = defaults.bool(forKey: Self.includeDSStoreOnlyFoldersKey)
@@ -86,6 +89,13 @@ final class EmptyFolderModel: ObservableObject {
     }
 
     func setTargetFolder(_ url: URL) {
+        // Dockへのドロップはウィンドウの `.disabled` を素通りしてここへ来る。処理中に
+        // 対象だけ差し替わると、`scan()` が走らないまま画面のパスと一覧が食い違い、
+        // 次の削除がユーザーの見ていないフォルダに対して走ってしまう。
+        guard !isBusy else {
+            statusMessage = "処理中です。終わってからもう一度ドロップしてください。"
+            return
+        }
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue else {
             statusMessage = "フォルダを選んでください"
@@ -133,8 +143,15 @@ final class EmptyFolderModel: ObservableObject {
     /// The sweep re-scans instead of deleting the list on screen: that list is a
     /// snapshot, and anything dropped into one of those folders since the scan must
     /// keep the folder alive rather than ride into the Trash with it.
-    func deleteAll() {
+    /// `approvedRoot` / `approvedCount` は確認ダイアログを出した時点の対象。処理中に
+    /// 対象が差し替わっていたら、ユーザーが見ていないフォルダを消すことになるので中止する。
+    func deleteAll(approvedRoot: URL?, approvedCount: Int) {
         guard hasDeletableItems, !isBusy, let root = targetFolder else { return }
+        guard root == approvedRoot, totalDeletableCount == approvedCount else {
+            statusMessage = "対象が変わったので中止しました。内容を確認してからもう一度実行してください。"
+            scan()
+            return
+        }
         let options = sweepOptions
         let usingTrash = moveToTrash
         let token = beginOperation()
@@ -183,20 +200,33 @@ final class EmptyFolderModel: ObservableObject {
         let more = result.failures.count > 3 ? " ほか\(result.failures.count - 3)件" : ""
         let failed = "\(result.failures.count) 件は処理できませんでした（\(names)\(more)）。"
 
+        // Skipped items are not failures: the folder gained content between the scan
+        // and the delete, so leaving it alone is the correct outcome. Saying nothing
+        // would look like a bug, because the row was on screen and is still there.
+        let skipped = result.skipped.isEmpty
+            ? ""
+            : " \(result.skipped.count) 件は、中身が残っていたため削除しませんでした。"
+
+        let limit = result.hitPassLimit
+            ? " まだ残りがあります。もう一度実行してください。"
+            : ""
+
         // Shown only when the sweep ended with nothing left to delete, so this really
         // is the last word — not just "this pass found no failures".
-        let confirmed = result.remaining.isEmpty ? "確認済み・消し残しはありません。" : ""
+        let confirmed = (result.remaining.isEmpty && result.skipped.isEmpty)
+            ? "確認済み・消し残しはありません。"
+            : ""
 
         switch (parts.isEmpty, result.failures.isEmpty) {
         case (true, true):
-            return "削除できるものはありませんでした。"
+            return skipped.isEmpty ? "削除できるものはありませんでした。" : "削除しませんでした。\(skipped)"
         case (true, false):
             // Nothing came out, so "nothing to delete was found" would contradict itself.
-            return failed
+            return "\(failed)\(skipped)\(limit)"
         case (false, true):
-            return "\(parts.joined(separator: "、"))\(verb)。\(confirmed)"
+            return "\(parts.joined(separator: "、"))\(verb)。\(confirmed)\(skipped)\(limit)"
         case (false, false):
-            return "\(parts.joined(separator: "、"))\(verb)。 \(failed)"
+            return "\(parts.joined(separator: "、"))\(verb)。 \(failed)\(skipped)\(limit)"
         }
     }
 }

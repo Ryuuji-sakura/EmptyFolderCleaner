@@ -131,6 +131,8 @@ struct ContentView: View {
             .scaleEffect(isTargeted ? 1.03 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isTargeted)
             .onDrop(of: [UTType.fileURL], isTargeted: $isTargeted, perform: handleDrop)
+            // 処理中に対象を差し替えられると、画面の一覧と実際に消すものがずれる。
+            .disabled(model.isBusy)
     }
 
     private var folderRow: some View {
@@ -141,6 +143,7 @@ struct ContentView: View {
                 Text("📁 フォルダを選択")
             }
             .buttonStyle(PopButtonStyle(colors: [Color.popMagenta, Color.popBlue]))
+            .disabled(model.isBusy)
 
             if let folder = model.targetFolder {
                 Text(folder.path)
@@ -188,7 +191,7 @@ struct ContentView: View {
             .toggleStyle(.checkbox)
             .accessibilityIdentifier("toggle.moveToTrash")
 
-            Text("※「.DS_Store 12-34-56」のように同期の衝突などで名前が変わったものも、名前が.DS_Storeで始まっていれば同じ扱いにします。ごくまれに、自分で.DS_Storeから始まる名前を付けたファイルがあると、それも削除対象に含まれます。")
+            Text("※「.DS_Store 12-34-56」のように同期の衝突で名前が変わったものも同じ扱いにします。中身を確かめてFinderが作ったものだけを対象にするので、自分で.DS_Storeから始まる名前を付けたファイルは削除されません。")
                 .font(.system(.caption2, design: .rounded))
                 .foregroundStyle(.white.opacity(0.75))
                 .fixedSize(horizontal: false, vertical: true)
@@ -306,8 +309,12 @@ struct ContentView: View {
             alert.addButton(withTitle: "完全に削除する")
         }
         alert.addButton(withTitle: "キャンセル")
+        // ダイアログを出している間にDockへのドロップなどで対象が変わりうるので、
+        // ユーザーが承認したのがどのフォルダの何件だったかを控えて渡す。
+        let approvedRoot = model.targetFolder
+        let approvedCount = model.totalDeletableCount
         if alert.runModal() == .alertFirstButtonReturn {
-            model.deleteAll()
+            model.deleteAll(approvedRoot: approvedRoot, approvedCount: approvedCount)
         }
     }
 }
