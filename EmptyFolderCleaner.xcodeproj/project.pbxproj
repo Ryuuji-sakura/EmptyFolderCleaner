@@ -16,6 +16,7 @@
 		696B53322DBDCB8907D1ED34 /* FolderSweeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF9A90E8A8328B8244A293F /* FolderSweeper.swift */; };
 		789F59DC5E7F46075A0F4724 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = D7E2E493CDA42954CCB18B7F /* InfoPlist.strings */; };
 		7F0F3F8921BE5C3B57D06C26 /* FolderSweeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF9A90E8A8328B8244A293F /* FolderSweeper.swift */; };
+		8DF1B5CF613BB19B0AE47815 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F382BC2DFCE796AD076C5D /* HelpView.swift */; };
 		BD56B1D1EA5B93BBDC964FF4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 39E5420397491088B2BE71EE /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -33,6 +34,7 @@
 		328BC7097ECE461D8751CA14 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		33804A2E641F4972257F9D76 /* EmptyFolderCleaner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EmptyFolderCleaner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		39E5420397491088B2BE71EE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		39F382BC2DFCE796AD076C5D /* HelpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpView.swift; sourceTree = "<group>"; };
 		3B431C9EA122F1B3B5A21F3E /* EmptyFolderCleanerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EmptyFolderCleanerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3FF9A90E8A8328B8244A293F /* FolderSweeper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSweeper.swift; sourceTree = "<group>"; };
 		4F009C93E6C442A115753EB2 /* EmptyFolderCleanerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyFolderCleanerApp.swift; sourceTree = "<group>"; };
@@ -62,6 +64,7 @@
 				4F009C93E6C442A115753EB2 /* EmptyFolderCleanerApp.swift */,
 				DA6CC1C467D9BCD8E086BE84 /* EmptyFolderModel.swift */,
 				3FF9A90E8A8328B8244A293F /* FolderSweeper.swift */,
+				39F382BC2DFCE796AD076C5D /* HelpView.swift */,
 				D7E2E493CDA42954CCB18B7F /* InfoPlist.strings */,
 			);
 			path = EmptyFolderCleaner;
@@ -217,6 +220,7 @@
 				3975DC01C11A2F91028F3A26 /* EmptyFolderCleanerApp.swift in Sources */,
 				021F8D628A5AF0F41BA6F21F /* EmptyFolderModel.swift in Sources */,
 				7F0F3F8921BE5C3B57D06C26 /* FolderSweeper.swift in Sources */,
+				8DF1B5CF613BB19B0AE47815 /* HelpView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

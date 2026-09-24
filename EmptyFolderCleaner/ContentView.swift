@@ -64,7 +64,11 @@ struct ContentView: View {
             headerBand
             content
         }
-        .frame(width: 500, height: 650)
+        // 固定サイズをやめた。App Storeのスクリーンショットは1280×800以上が要るし、
+        // 一覧が4行しか見えないのは、選んで消すアプリとして単純に使いにくい。
+        // 広げた分は一覧が受け取る。
+        .frame(minWidth: 480, idealWidth: 560, maxWidth: .infinity,
+               minHeight: 660, idealHeight: 720, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
@@ -99,6 +103,9 @@ struct ContentView: View {
             if model.hasDeletableItems {
                 selectionHeader
                 resultsList
+            } else {
+                // 一覧が無いときは、下の要素が間延びしないよう余白でまとめて受ける。
+                Spacer(minLength: 0)
             }
 
             statusBadge
@@ -148,19 +155,24 @@ struct ContentView: View {
             }
         }
         .padding(22)
-        .frame(maxHeight: .infinity, alignment: .top)
     }
 
+    /// 右端に寄せる。固定座標に置いていたときは、ウィンドウを広げると画面の真ん中に
+    /// 取り残されて、ただの汚れのように見えていた。
     private var backgroundDog: some View {
-        Image(systemName: "dog.fill")
-            .resizable()
-            .scaledToFit()
-            .frame(width: 120)
-            .foregroundStyle(.white.opacity(0.18))
-            .rotationEffect(.degrees(-4))
-            .offset(x: 330, y: 10)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
+        HStack {
+            Spacer(minLength: 0)
+            Image(systemName: "dog.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 120)
+                .foregroundStyle(.white.opacity(0.18))
+                .rotationEffect(.degrees(-4))
+                .offset(y: 10)
+                .padding(.trailing, 40)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private var dropZone: some View {
@@ -207,7 +219,7 @@ struct ContentView: View {
             .disabled(model.isBusy)
 
             if let folder = model.targetFolder {
-                Text(folder.path)
+                Text(displayPath(folder))
                     .font(.system(.caption, design: .rounded))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -395,7 +407,7 @@ struct ContentView: View {
                 }
             }
         }
-        .frame(minHeight: 150, maxHeight: 190)
+        .frame(minHeight: 150, maxHeight: .infinity)
         .disabled(model.isDeleting)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .controlBackgroundColor)))
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.10)))
@@ -437,6 +449,22 @@ struct ContentView: View {
             }
         }
         return true
+    }
+
+    /// サンドボックスの中では `NSHomeDirectory()` がアプリのコンテナを指すので、
+    /// `abbreviatingWithTildeInPath` は本物のホームを縮めてくれない。実ユーザーの
+    /// ホームは passwd から取る。`/Users/名前/` の繰り返しが消えて、肝心の末尾が読める。
+    private static let realHome: String = {
+        if let dir = getpwuid(getuid())?.pointee.pw_dir { return String(cString: dir) }
+        return NSHomeDirectory()
+    }()
+
+    private func displayPath(_ url: URL) -> String {
+        let path = url.path
+        let home = Self.realHome
+        if path == home { return "~" }
+        guard path.hasPrefix(home + "/") else { return path }
+        return "~" + path.dropFirst(home.count)
     }
 
     private func relativePath(_ url: URL) -> String {

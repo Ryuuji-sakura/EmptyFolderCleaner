@@ -323,6 +323,73 @@ final class EmptyFolderCleanerUITests: XCTestCase {
         setToggle(app, "toggle.moveToTrash", to: true)
     }
 
+    /// `.windowResizability(.contentSize)` と中身の固定サイズの組み合わせで、
+    /// ウィンドウは無言でリサイズ不可になっていた。角を実際に引っぱって、
+    /// App Store のスクリーンショットに要る 1280×800 まで広がることを確かめる。
+    /// ついでにその状態のPNGを書き出す（掲載用の素材づくりにそのまま使える）。
+    func testWindowCanReachAppStoreScreenshotSize() throws {
+        makeDir("写真/2023/沖縄")
+        makeDir("写真/2024/下書き")
+        makeDir("書類/請求書/2022")
+        makeFile("書類/大事なメモ.txt")
+        makeFile("音楽/.DS_Store")
+        makeDir("空っぽ/さらに空/もっと空")
+
+        let app = try launchApp()
+        setToggle(app, "toggle.allDSStoreFiles", to: true)
+        waitForStatus(app, contains: "見つかりました")
+
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.waitForExistence(timeout: 10))
+        let before = window.frame
+
+        // 既定サイズのほうは README 用。
+        let small = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("efc-window-default.png")
+        try window.screenshot().pngRepresentation.write(to: small)
+        print("SHOT_DEFAULT=\(small.path)")
+
+        let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
+        corner.press(forDuration: 0.2, thenDragTo: corner.withOffset(
+            CGVector(dx: 1320 - before.width, dy: 840 - before.height)
+        ))
+        usleep(800_000)
+
+        let after = window.frame
+        XCTAssertGreaterThanOrEqual(after.width, 1280, "App Store のスクリーンショット幅まで広げられません")
+        XCTAssertGreaterThanOrEqual(after.height, 800, "App Store のスクリーンショット高さまで広げられません")
+
+        let out = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("efc-window.png")
+        try window.screenshot().pngRepresentation.write(to: out)
+        print("SHOT_PATH=\(out.path)")
+    }
+
+    /// 既定の「空フォルダ削除ヘルプ」は、存在しないヘルプブックを開こうとして
+    /// エラーになる。アプリ内の説明に差し替わっていることを確かめる。
+    /// あわせて、キーボードだけで操作できる導線があることも見ておく。
+    func testMenuBarOffersTheAppsOwnActions() throws {
+        makeDir("なにか")
+
+        let app = try launchApp()
+        waitForStatus(app, contains: "1 件の空フォルダ")
+
+        let menuBar = app.menuBars
+        let folderMenu = menuBar.menuBarItems["フォルダ"]
+        XCTAssertTrue(folderMenu.waitForExistence(timeout: 10), "「フォルダ」メニューがありません")
+        folderMenu.click()
+        XCTAssertTrue(menuBar.menuItems["もう一度調べる"].waitForExistence(timeout: 5))
+        XCTAssertTrue(menuBar.menuItems["中止"].exists)
+        app.typeKey(.escape, modifierFlags: [])
+
+        let helpMenu = menuBar.menuBarItems["ヘルプ"]
+        XCTAssertTrue(helpMenu.waitForExistence(timeout: 5), "「ヘルプ」メニューがありません")
+        helpMenu.click()
+        let helpItem = menuBar.menuItems["空フォルダ削除の使いかた"]
+        XCTAssertTrue(helpItem.waitForExistence(timeout: 5), "既定のヘルプ項目が差し替わっていません")
+        helpItem.click()
+
+        XCTAssertTrue(app.windows["使いかた"].waitForExistence(timeout: 10), "使いかたのウィンドウが開きません")
+    }
+
     func testCancellingTheConfirmationDeletesNothing() throws {
         makeDir("消えないで/中")
 
