@@ -54,8 +54,17 @@ xcodegen generate
 step "テストを実行"
 # `| tail` を通すとパイプラインの終了コードが tail のものになり、テストが落ちても
 # 素通りしてしまう（set -e では捕まらない）。結果を明示的に判定する。
+#
+# SKIP_UI_TESTS=1 でユニットテストのみに絞れる。XCUITest が
+# 「Timed out while enabling automation mode」で起動できない環境向けの逃げ道で、
+# 常用するものではない。使うと下に警告が出る。
+TEST_ARGS=()
+if [ "${SKIP_UI_TESTS:-0}" = "1" ]; then
+    printf '\033[1;33m警告: UIテストを飛ばしています（SKIP_UI_TESTS=1）。ユニットテストのみ実行します。\033[0m\n'
+    TEST_ARGS=(-only-testing:"$SCHEME"Tests)
+fi
 if ! xcodebuild -project "$SCHEME.xcodeproj" -scheme "$SCHEME" \
-        -configuration Debug -derivedDataPath build test > "$BUILD_DIR/test.log" 2>&1; then
+        -configuration Debug -derivedDataPath build test "${TEST_ARGS[@]}" > "$BUILD_DIR/test.log" 2>&1; then
     grep -E "error:|Executed .* tests" "$BUILD_DIR/test.log" | tail -20
     echo "テストが失敗しました。詳細: $BUILD_DIR/test.log" >&2
     exit 1
