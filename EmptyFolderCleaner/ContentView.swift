@@ -64,7 +64,7 @@ struct ContentView: View {
             headerBand
             content
         }
-        .frame(width: 500, height: 620)
+        .frame(width: 500, height: 650)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
@@ -97,6 +97,7 @@ struct ContentView: View {
             optionToggles
 
             if model.hasDeletableItems {
+                selectionHeader
                 resultsList
             }
 
@@ -135,13 +136,13 @@ struct ContentView: View {
                     Button {
                         confirmAndDelete()
                     } label: {
-                        Text("\(model.moveToTrash ? "ゴミ箱に入れる" : "完全に削除する")（\(model.totalDeletableCount)件）")
+                        Text("\(model.moveToTrash ? "ゴミ箱に入れる" : "完全に削除する")（\(model.selectedCount)件）")
                     }
                     .buttonStyle(PopButtonStyle(colors: model.moveToTrash
                                                 ? [Color.deepMagenta, Color.deepBlue]
                                                 : [Color.deepRose, Color.deepCoral]))
                     .keyboardShortcut(.defaultAction)
-                    .disabled(model.isBusy)
+                    .disabled(model.isBusy || !model.hasSelection)
                     .accessibilityIdentifier("button.delete")
                 }
             }
@@ -313,35 +314,89 @@ struct ContentView: View {
         let isFolder: Bool
     }
 
+    /// 一覧そのものより先に「これは全部消すリストではなく、選んで消すリストだ」と
+    /// 分かるように、見出しで選択状態を示す。
+    private var selectionHeader: some View {
+        HStack(spacing: 8) {
+            Toggle(isOn: Binding(
+                get: { model.isEverythingSelected },
+                set: { model.setAllSelected($0) }
+            )) {
+                Text("すべて選択")
+                    .font(.system(.caption, design: .rounded).weight(.semibold))
+                    .foregroundStyle(.primary)
+            }
+            .toggleStyle(.checkbox)
+            .disabled(model.isBusy)
+            .accessibilityIdentifier("toggle.selectAll")
+
+            Spacer()
+
+            Text("\(model.totalDeletableCount) 件中 \(model.selectedCount) 件を選択")
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("label.selectionCount")
+        }
+        .padding(.bottom, -8)
+    }
+
     private var resultsList: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(deletableItems.enumerated()), id: \.element) { index, item in
+                    let path = relativePath(item.url)
                     HStack(spacing: 8) {
-                        Image(systemName: item.isFolder ? "folder" : "doc")
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
-                        Text(relativePath(item.url))
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Spacer()
+                        Toggle(isOn: Binding(
+                            get: { model.isSelected(item.url) },
+                            set: { model.setSelected(item.url, $0) }
+                        )) {
+                            EmptyView()
+                        }
+                        .toggleStyle(.checkbox)
+                        .labelsHidden()
+                        .accessibilityLabel("\(path) を削除する")
+                        .accessibilityIdentifier("check.\(path)")
+
+                        // アイコンとパスはVoiceOverで1項目として読ませる。別々に
+                        // 読まれると、何件あるのか把握しづらい。チェックボックスと
+                        // 「Finderで表示」は操作できる必要があるので外に出してある。
+                        HStack(spacing: 8) {
+                            Image(systemName: item.isFolder ? "folder" : "doc")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
+                            Text(path)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer(minLength: 0)
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(item.isFolder ? "フォルダ" : "ファイル") \(path)")
+                        .accessibilityIdentifier("row.\(path)")
+
+                        Button {
+                            model.revealInFinder(item.url)
+                        } label: {
+                            Image(systemName: "arrow.up.forward.square")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Finderで表示")
+                        .accessibilityLabel("\(path) をFinderで表示")
+                        .accessibilityIdentifier("reveal.\(path)")
                     }
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 5)
                     // 交互の薄い縞。以前は行ごとに5色つけていたが、色に意味がなく
                     // 「赤い行は危険？」と読ませてしまううえ、白文字が沈んでいた。
                     .background(index.isMultiple(of: 2) ? Color.clear : Color.primary.opacity(0.04))
-                    // 行はVoiceOverでも1項目として読ませる。アイコンとパスが
-                    // 別々に読まれると、何件あるのか把握しづらい。
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(item.isFolder ? "フォルダ" : "ファイル") \(relativePath(item.url))")
-                    .accessibilityIdentifier("row.\(relativePath(item.url))")
                 }
             }
         }
-        .frame(minHeight: 150, maxHeight: 180)
+        .frame(minHeight: 150, maxHeight: 190)
+        .disabled(model.isDeleting)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .controlBackgroundColor)))
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.10)))
     }
@@ -398,8 +453,10 @@ struct ContentView: View {
     private func confirmAndDelete() {
         let alert = NSAlert()
         var parts: [String] = []
-        if !model.emptyFolders.isEmpty { parts.append("空フォルダ \(model.emptyFolders.count) 件") }
-        if !model.dsStoreFiles.isEmpty { parts.append(".DS_Store \(model.dsStoreFiles.count) 個") }
+        let folders = model.selectedEmptyFolders.count
+        let files = model.selectedDSStoreFiles.count
+        if folders > 0 { parts.append("空フォルダ \(folders) 件") }
+        if files > 0 { parts.append(".DS_Store \(files) 個") }
         let summary = parts.joined(separator: "、")
         if model.moveToTrash {
             alert.messageText = "ゴミ箱に入れますか？"
@@ -416,9 +473,9 @@ struct ContentView: View {
         // ダイアログを出している間にDockへのドロップなどで対象が変わりうるので、
         // ユーザーが承認したのがどのフォルダの何件だったかを控えて渡す。
         let approvedRoot = model.targetFolder
-        let approvedCount = model.totalDeletableCount
+        let approvedSelection = model.selectedPaths
         if alert.runModal() == .alertFirstButtonReturn {
-            model.deleteAll(approvedRoot: approvedRoot, approvedCount: approvedCount)
+            model.deleteAll(approvedRoot: approvedRoot, approvedSelection: approvedSelection)
         }
     }
 }

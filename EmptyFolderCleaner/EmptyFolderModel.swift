@@ -10,6 +10,10 @@ final class EmptyFolderModel: ObservableObject {
     @Published private(set) var targetFolder: URL?
     @Published private(set) var emptyFolders: [URL] = []
     @Published private(set) var dsStoreFiles: [URL] = []
+    /// ユーザーが削除対象として選んでいるもの。スキャン直後は全部入り。
+    /// URL ではなく解決済みのパスで持つのは、末尾スラッシュや `/private` の有無で
+    /// 同じ場所が別物として扱われるのを防ぐため。
+    @Published private(set) var selectedPaths: Set<String> = []
     @Published private(set) var isScanning = false
     @Published private(set) var isDeleting = false
     /// 中止を頼んだあと、実際に止まるまでの間。ボタンを押しても一拍あるので、
@@ -89,6 +93,34 @@ final class EmptyFolderModel: ObservableObject {
     var hasDeletableItems: Bool { totalDeletableCount > 0 }
     var isBusy: Bool { isScanning || isDeleting }
 
+    // MARK: - 選択
+
+    var selectedEmptyFolders: [URL] { emptyFolders.filter(isSelected) }
+    var selectedDSStoreFiles: [URL] { dsStoreFiles.filter(isSelected) }
+    var selectedCount: Int { selectedEmptyFolders.count + selectedDSStoreFiles.count }
+    var hasSelection: Bool { selectedCount > 0 }
+    var isEverythingSelected: Bool { hasDeletableItems && selectedCount == totalDeletableCount }
+
+    nonisolated static func key(_ url: URL) -> String { url.standardizedFileURL.path }
+
+    func isSelected(_ url: URL) -> Bool { selectedPaths.contains(Self.key(url)) }
+
+    func setSelected(_ url: URL, _ isOn: Bool) {
+        guard !isBusy else { return }
+        if isOn { selectedPaths.insert(Self.key(url)) } else { selectedPaths.remove(Self.key(url)) }
+    }
+
+    func setAllSelected(_ isOn: Bool) {
+        guard !isBusy else { return }
+        selectedPaths = isOn ? Set((emptyFolders + dsStoreFiles).map(Self.key)) : []
+    }
+
+    /// 消す前に現物を確かめたいときのための導線。審査でも「消す対象を自分で確認できる」
+    /// ことが効くが、それ以前に、パスの文字列だけで判断させるのは乱暴。
+    func revealInFinder(_ url: URL) {
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+    }
+
     /// Deleting every `.DS_Store` implies they can never keep a folder alive.
     var sweepOptions: FolderSweeper.Options {
         FolderSweeper.Options(
@@ -135,6 +167,7 @@ final class EmptyFolderModel: ObservableObject {
         isScanning = true
         emptyFolders = []
         dsStoreFiles = []
+        selectedPaths = []
         showDSStoreReappearNote = false
         statusMessage = "スキャン中..."
         let options = sweepOptions
@@ -151,6 +184,8 @@ final class EmptyFolderModel: ObservableObject {
                 }
                 self.emptyFolders = result.emptyFolders
                 self.dsStoreFiles = result.dsStoreFiles
+                // 見つかったものは既定で全部チェック済み。外したい人だけが外す。
+                self.setAllSelected(true)
                 self.statusMessage = Self.foundSummary(result)
             }
         }
@@ -176,13 +211,17 @@ final class EmptyFolderModel: ObservableObject {
     /// keep the folder alive rather than ride into the Trash with it.
     /// `approvedRoot` / `approvedCount` は確認ダイアログを出した時点の対象。処理中に
     /// 対象が差し替わっていたら、ユーザーが見ていないフォルダを消すことになるので中止する。
-    func deleteAll(approvedRoot: URL?, approvedCount: Int) {
-        guard hasDeletableItems, !isBusy, let root = targetFolder else { return }
-        guard root == approvedRoot, totalDeletableCount == approvedCount else {
+    func deleteAll(approvedRoot: URL?, approvedSelection: Set<String>) {
+        guard hasSelection, !isBusy, let root = targetFolder else { return }
+        guard root == approvedRoot, selectedPaths == approvedSelection else {
             statusMessage = "対象が変わったので中止しました。内容を確認してからもう一度実行してください。"
             scan()
             return
         }
+        // 全部にチェックが入っているときだけ、従来どおり何も残らなくなるまで繰り返す
+        // （深い階層の .DS_Store を消した結果として空になる親まで片付ける）。
+        // 一部だけ選ばれているなら、選ばれたものだけを消して結果を見せ直す。
+        let only: Set<String>? = isEverythingSelected ? nil : selectedPaths
         let options = sweepOptions
         let usingTrash = moveToTrash
         let token = beginOperation()
@@ -191,13 +230,14 @@ final class EmptyFolderModel: ObservableObject {
         let control = makeControl(token: token)
 
         runningTask = Task.detached(priority: .userInitiated) {
-            let result = FolderSweeper.sweep(root: root, options: options, control: control)
+            let result = FolderSweeper.sweep(root: root, options: options, control: control, only: only)
             await MainActor.run {
                 guard self.currentToken == token else { return }
                 self.finishOperation()
                 self.emptyFolders = result.remaining.emptyFolders
                 self.dsStoreFiles = result.remaining.dsStoreFiles
                 self.isDeleting = false
+                self.setAllSelected(true)
                 self.showDSStoreReappearNote = result.deletedFiles > 0
                 self.statusMessage = Self.deletedSummary(result, movedToTrash: usingTrash)
             }

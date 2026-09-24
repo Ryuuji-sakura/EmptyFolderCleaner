@@ -151,6 +151,22 @@ final class EmptyFolderCleanerUITests: XCTestCase {
             """, file: file, line: line)
     }
 
+    /// SwiftUI の `Text` は `label` が空で `value` 側に文字列が載ることがあるので、
+    /// 両方を見て、表示が追いつくまで少し待つ。
+    private func waitForText(_ element: XCUIElement, toBe wanted: String, timeout: TimeInterval = 10,
+                             file: StaticString = #filePath, line: UInt = #line) {
+        let deadline = Date().addingTimeInterval(timeout)
+        var seen = "(要素が見つかりません)"
+        while Date() < deadline {
+            if element.exists {
+                seen = (element.value as? String) ?? element.label
+                if seen == wanted { return }
+            }
+            usleep(200_000)
+        }
+        XCTFail("表示が『\(wanted)』になりませんでした。実際: 「\(seen)」", file: file, line: line)
+    }
+
     private func row(_ app: XCUIApplication, _ relativePath: String) -> XCUIElement {
         app.descendants(matching: .any)["row.\(relativePath)"]
     }
@@ -237,6 +253,38 @@ final class EmptyFolderCleanerUITests: XCTestCase {
 
         // 設定はアプリと同じバンドルIDの UserDefaults に残るので、戻さないと
         // 開発マシンのアプリが「完全削除」のまま使われることになる。
+        setToggle(app, "toggle.moveToTrash", to: true)
+    }
+
+    /// 一覧はただの報告ではなく、選んで消すためのもの。チェックを外した行が
+    /// 生き残ることを、実際のアプリを操作して確かめる。
+    func testUncheckedRowsSurviveTheDelete() throws {
+        makeDir("消してよい")
+        makeDir("残しておきたい")
+
+        let app = try launchApp()
+        setToggle(app, "toggle.allDSStoreFiles", to: false)
+        setToggle(app, "toggle.moveToTrash", to: false)
+        waitForStatus(app, contains: "2 件の空フォルダ")
+
+        let keep = app.checkBoxes["check.残しておきたい"]
+        XCTAssertTrue(keep.waitForExistence(timeout: 10), "行のチェックボックスが見つかりません")
+        keep.click()
+
+        let counter = app.staticTexts["label.selectionCount"]
+        XCTAssertTrue(counter.waitForExistence(timeout: 10))
+        waitForText(counter, toBe: "2 件中 1 件を選択")
+
+        app.buttons["button.delete"].click()
+        let dialog = try confirmationDialog(of: app)
+        let confirm = dialog.buttons["完全に削除する"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10))
+        confirm.click()
+
+        waitForStatus(app, contains: "完全に削除しました")
+        XCTAssertFalse(exists("消してよい"), "選んだフォルダが残っています")
+        XCTAssertTrue(exists("残しておきたい"), "チェックを外したフォルダが消えました")
+
         setToggle(app, "toggle.moveToTrash", to: true)
     }
 

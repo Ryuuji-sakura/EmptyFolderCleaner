@@ -389,22 +389,42 @@ enum FolderSweeper {
 
     // MARK: - Sweeping
 
+    /// Keeps only the entries the caller explicitly asked for, matched on the
+    /// resolved path so that a trailing slash or a `/private` prefix cannot turn one
+    /// place into two.
+    private static func restricted(_ result: ScanResult, to only: Set<String>?) -> ScanResult {
+        guard let only else { return result }
+        var out = result
+        out.emptyFolders = result.emptyFolders.filter { only.contains($0.standardizedFileURL.path) }
+        out.dsStoreFiles = result.dsStoreFiles.filter { only.contains($0.standardizedFileURL.path) }
+        return out
+    }
+
     /// Delete, then look again, until the tree stops changing. Removing a deep
     /// `.DS_Store` can leave a whole chain of parents empty, and the user should
     /// not have to re-run the app to clear them.
     /// Always scans first rather than accepting a caller's list: a list handed in
     /// from the UI is a snapshot, and a folder that gained a file since then must not
     /// be deleted on the strength of it.
-    static func sweep(root: URL, options: Options, control: Control = .none) -> SweepResult {
+    /// `only` は、ユーザーが一覧で選んだものの実パス。渡されたときは、その回で
+    /// 消すのはそこに入っているものだけで、削除の結果として新しく空になった親までは
+    /// 追いかけない。ユーザーがまだ見ていないものを「選んだこと」にはできない。
+    /// `nil`（全選択）のときだけ、従来どおり何も残らなくなるまで繰り返す。
+    static func sweep(root: URL, options: Options, control: Control = .none, only: Set<String>? = nil) -> SweepResult {
         let fm = FileManager.default
-        var pending = scan(root: root, options: options, control: control)
+        let found = scan(root: root, options: options, control: control)
         var result = SweepResult()
         // Stopped before anything was deleted. Nothing to report but the stop itself.
-        guard !pending.wasCancelled else {
+        guard !found.wasCancelled else {
             result.wasCancelled = true
             return result
         }
-        guard !pending.isEmpty else { return result }
+        var pending = restricted(found, to: only)
+        guard !pending.isEmpty else {
+            // 選んだものが既に無くなっていても、木に残っているものは見せ続ける。
+            result.remaining = found
+            return result
+        }
 
         // Failures and skips are accumulated across passes rather than overwritten:
         // an item that failed in pass 1 and then vanished from later scans would
@@ -428,6 +448,10 @@ enum FolderSweeper {
                 break
             }
 
+            // 選んだものだけを消したのだから、ここで終わり。続けて掃除すると、
+            // ユーザーがチェックを外したものの親まで巻き込みかねない。
+            if only != nil { break }
+
             // Nothing moved: whatever is left is genuinely stuck, stop retrying.
             if outcome.deletedCount == 0 { break }
 
@@ -443,12 +467,20 @@ enum FolderSweeper {
             pending = next
         }
 
-        // After a stop, the pending list is a snapshot of a tree we have since been
-        // deleting from, so it no longer describes anything. The caller is told to
-        // scan again rather than shown a list that is partly already gone.
-        if result.wasCancelled { pending = ScanResult() }
+        if result.wasCancelled {
+            // After a stop, the pending list is a snapshot of a tree we have since
+            // been deleting from, so it no longer describes anything. The caller is
+            // told to scan again rather than shown a list that is partly already gone.
+            pending = ScanResult()
+        } else if only != nil {
+            // 選択削除のあとは、何が残ったかを見せ直す。ここで初めて空になった親は
+            // 新しい候補として一覧に並び、ユーザーが改めて選べる。
+            let refreshed = scan(root: root, options: options, control: control)
+            result.wasCancelled = refreshed.wasCancelled
+            pending = refreshed.wasCancelled ? ScanResult() : refreshed
+        }
 
-        result.hitPassLimit = !result.wasCancelled && passesUsed == maxPasses && !pending.isEmpty
+        result.hitPassLimit = only == nil && !result.wasCancelled && passesUsed == maxPasses && !pending.isEmpty
         result.failures = failures
             .filter { fm.fileExists(atPath: $0.key.path) }
             .map { Failure(url: $0.key, message: $0.value) }

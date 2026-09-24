@@ -525,6 +525,81 @@ final class FolderSweeperTests: XCTestCase {
         XCTAssertEqual(counts.last, 501)
     }
 
+    // MARK: - 選んだものだけ消す
+
+    private func keys(_ urls: [URL]) -> Set<String> {
+        Set(urls.map { $0.standardizedFileURL.path })
+    }
+
+    /// チェックを外したものが消えないこと。一覧で選ばせておいて選ばれなかったものまで
+    /// 消すなら、チェックボックスは飾りになる。
+    func testOnlyTheChosenFoldersAreDeleted() {
+        makeDir("消す")
+        makeDir("残す")
+        makeDir("これも残す")
+
+        let found = FolderSweeper.scan(root: root, options: bothOn)
+        let chosen = keys(found.emptyFolders.filter { $0.lastPathComponent == "消す" })
+        XCTAssertEqual(chosen.count, 1)
+
+        let result = FolderSweeper.sweep(root: root, options: bothOn, only: chosen)
+
+        XCTAssertEqual(result.deletedFolders, 1)
+        XCTAssertFalse(exists("消す"))
+        XCTAssertTrue(exists("残す"), "選んでいないフォルダが消えました")
+        XCTAssertTrue(exists("これも残す"), "選んでいないフォルダが消えました")
+        // 消したあとに何が残っているかは、選択の外側も含めて見せ直す。
+        XCTAssertEqual(relativePaths(result.remaining.emptyFolders), ["残す", "これも残す"])
+    }
+
+    /// 選択削除は、消した結果として新しく空になった親までは追いかけない。
+    /// ユーザーがまだ見ていないものを「選んだこと」にはできない。
+    func testChoosingASubsetDoesNotCascadeIntoNewlyEmptiedParents() {
+        makeDSStore("親/.DS_Store")
+        makeDir("親/子")
+        // .DS_Store を中身として数えるので、この時点の「親」は空ではない。
+        let options = FolderSweeper.Options(ignoreDSStoreForEmptiness: false, deleteAllDSStoreFiles: true, moveToTrash: false)
+
+        let found = FolderSweeper.scan(root: root, options: options)
+        XCTAssertEqual(relativePaths(found.emptyFolders), ["親/子"])
+        XCTAssertEqual(relativePaths(found.dsStoreFiles), ["親/.DS_Store"])
+
+        let result = FolderSweeper.sweep(root: root, options: options, only: keys(found.dsStoreFiles))
+
+        XCTAssertEqual(result.deletedFiles, 1)
+        XCTAssertEqual(result.deletedFolders, 0)
+        XCTAssertTrue(exists("親"), "選んでいない親まで消えました")
+        XCTAssertTrue(exists("親/子"), "選んでいない子まで消えました")
+        // 空になった親は、次に選べる候補として一覧へ出す。
+        XCTAssertEqual(relativePaths(result.remaining.emptyFolders), ["親", "親/子"])
+    }
+
+    /// 全部にチェックが入っているときは従来どおり。深い階層の .DS_Store を消した
+    /// 結果として空になった親まで、一回で片付く。
+    func testFullSelectionStillSweepsNewlyEmptiedParents() {
+        makeDSStore("親/.DS_Store")
+        makeDir("親/子")
+        let options = FolderSweeper.Options(ignoreDSStoreForEmptiness: false, deleteAllDSStoreFiles: true, moveToTrash: false)
+
+        let result = FolderSweeper.sweep(root: root, options: options, only: nil)
+
+        XCTAssertEqual(result.deletedFiles, 1)
+        XCTAssertEqual(result.deletedFolders, 2)
+        XCTAssertFalse(exists("親"))
+        XCTAssertTrue(result.remaining.isEmpty)
+    }
+
+    /// 選んだものが削除前に消えていても、木に残っているものは見せ続ける。
+    func testNothingSelectedStillReportsWhatIsThere() {
+        makeDir("残る")
+
+        let result = FolderSweeper.sweep(root: root, options: bothOn, only: [])
+
+        XCTAssertEqual(result.deletedFolders, 0)
+        XCTAssertTrue(exists("残る"))
+        XCTAssertEqual(relativePaths(result.remaining.emptyFolders), ["残る"])
+    }
+
     /// Nothing in the sweeper may change behaviour just because nobody is watching:
     /// the default control has to leave the old results exactly as they were.
     func testDefaultControlNeitherCancelsNorReports() {
