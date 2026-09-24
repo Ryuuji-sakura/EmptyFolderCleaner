@@ -444,23 +444,25 @@ final class FolderSweeperTests: XCTestCase {
     /// Collects progress reports from whichever thread they arrive on.
     private final class Reports: @unchecked Sendable {
         private let lock = NSLock()
-        private var values: [(FolderSweeper.Phase, Int)] = []
-        func add(_ phase: FolderSweeper.Phase, _ count: Int) {
+        private var values: [(FolderSweeper.Phase, FolderSweeper.Progress)] = []
+        func add(_ phase: FolderSweeper.Phase, _ progress: FolderSweeper.Progress) {
             lock.lock()
             defer { lock.unlock() }
-            values.append((phase, count))
+            values.append((phase, progress))
         }
-        func counts(for phase: FolderSweeper.Phase) -> [Int] {
+        private func all(_ phase: FolderSweeper.Phase) -> [FolderSweeper.Progress] {
             lock.lock()
             defer { lock.unlock() }
             return values.filter { $0.0 == phase }.map(\.1)
         }
+        func counts(for phase: FolderSweeper.Phase) -> [Int] { all(phase).map(\.count) }
+        func fractions(for phase: FolderSweeper.Phase) -> [Double] { all(phase).compactMap(\.fraction) }
     }
 
     /// The tree has to be wide enough that the walk actually pauses to ask; below
     /// the progress stride it would finish before the first question.
-    private func makeWideTree(count: Int) {
-        for i in 0..<count { makeDir("wide/\(i)") }
+    private func makeWideTree(count: Int, under parent: String = "wide") {
+        for i in 0..<count { makeDir("\(parent)/\(i)") }
     }
 
     /// A cancelled scan must not hand back the empty folders it had gathered. They
@@ -598,6 +600,47 @@ final class FolderSweeperTests: XCTestCase {
         XCTAssertEqual(result.deletedFolders, 0)
         XCTAssertTrue(exists("残る"))
         XCTAssertEqual(relativePaths(result.remaining.emptyFolders), ["残る"])
+    }
+
+    /// 帯グラフの元になる割合。渡されたフォルダの直下を等分した**目安**なので
+    /// 精度は主張できないが、次の2つは必ず守られていないと帯として嘘になる。
+    /// 0...1 に収まること、そして戻らないこと。
+    func testScanProgressFractionStaysInRangeAndNeverGoesBackwards() {
+        for i in 0..<5 { makeWideTree(count: 120, under: "枝\(i)") }
+        let reports = Reports()
+
+        let result = FolderSweeper.scan(
+            root: root,
+            options: bothOn,
+            control: FolderSweeper.Control(isCancelled: { false }, report: { reports.add($0, $1) })
+        )
+
+        let fractions = reports.fractions(for: .scanning)
+        XCTAssertFalse(result.wasCancelled)
+        XCTAssertGreaterThan(fractions.count, 1, "割合がほとんど出ていません")
+        XCTAssertEqual(fractions, fractions.sorted(), "割合が戻っています")
+        XCTAssertTrue(fractions.allSatisfy { $0 >= 0 && $0 <= 1 }, "割合が 0...1 の外に出ました: \(fractions)")
+        XCTAssertEqual(fractions.last, 1, "終わったのに帯が満ちていません")
+    }
+
+    /// 消す側は何件消すか分かったうえで始めるので、割合は目安ではなく正確。
+    func testDeleteProgressFractionIsExact() {
+        for i in 0..<40 { makeDir("箱\(i)") }
+        let reports = Reports()
+
+        let result = FolderSweeper.sweep(
+            root: root,
+            options: bothOn,
+            control: FolderSweeper.Control(isCancelled: { false }, report: { reports.add($0, $1) })
+        )
+
+        XCTAssertEqual(result.deletedFolders, 40)
+        let fractions = reports.fractions(for: .deleting)
+        XCTAssertEqual(fractions, fractions.sorted(), "割合が戻っています")
+        XCTAssertTrue(fractions.allSatisfy { $0 >= 0 && $0 <= 1 })
+        XCTAssertEqual(fractions.last, 1, "終わったのに帯が満ちていません")
+        // 20件ごとに出るので、40件なら途中経過が必ず含まれる。
+        XCTAssertTrue(fractions.contains { $0 > 0 && $0 < 1 }, "途中経過が出ていません: \(fractions)")
     }
 
     /// Nothing in the sweeper may change behaviour just because nobody is watching:

@@ -37,9 +37,16 @@ enum FolderSweeper {
     /// test with no task around it.
     struct Control: Sendable {
         var isCancelled: @Sendable () -> Bool
-        var report: @Sendable (Phase, Int) -> Void
+        var report: @Sendable (Phase, Progress) -> Void
 
         static let none = Control(isCancelled: { false }, report: { _, _ in })
+    }
+
+    /// 進み具合。`count` は実際に扱った数で、常に正確。
+    /// `fraction` は 0...1 の**目安**で、分からないときは nil。
+    struct Progress: Sendable, Equatable {
+        var count: Int
+        var fraction: Double?
     }
 
     /// How often progress is published. Rare enough that the hop out of the walk
@@ -152,6 +159,10 @@ enum FolderSweeper {
         var result = ScanResult()
         var seen = 0
         var cancelled = false
+        // 全体の件数は歩き終わるまで分からないので、割合はあくまで目安。渡された
+        // フォルダの直下の項目を等分し、さらにその1つ下の階層で刻んで滑らかにする。
+        // それより深いところでは値を据え置く（そこが何項目あるかは、やはり分からない）。
+        var fraction: Double?
 
         func contents(of dir: URL) -> [URL]? {
             try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey])
@@ -162,18 +173,21 @@ enum FolderSweeper {
         func note() {
             seen += 1
             guard seen % scanProgressStride == 0 else { return }
-            control.report(.scanning, seen)
+            control.report(.scanning, Progress(count: seen, fraction: fraction))
             if control.isCancelled() { cancelled = true }
         }
 
         @discardableResult
-        func visit(_ dir: URL) -> Bool {
+        func visit(_ dir: URL, slice: (base: Double, width: Double)? = nil) -> Bool {
             guard let entries = contents(of: dir) else { return false }
             var allChildrenEmpty = true
             var hasRealFile = false
             var localDSStore: [URL] = []
-            for entry in entries {
+            for (offset, entry) in entries.enumerated() {
                 if cancelled { return false }
+                if let slice {
+                    fraction = slice.base + slice.width * Double(offset) / Double(entries.count)
+                }
                 note()
                 switch classify(entry) {
                 case .folder:
@@ -197,12 +211,17 @@ enum FolderSweeper {
         }
 
         guard let topEntries = contents(of: root) else { return ScanResult() }
-        for entry in topEntries {
+        let topCount = topEntries.count
+        for (index, entry) in topEntries.enumerated() {
             if cancelled { break }
+            let slice = topCount > 0
+                ? (base: Double(index) / Double(topCount), width: 1.0 / Double(topCount))
+                : nil
+            fraction = slice?.base
             note()
             switch classify(entry) {
             case .folder:
-                visit(entry)
+                visit(entry, slice: slice)
             case .dsStore:
                 if options.deleteAllDSStoreFiles { result.dsStoreFiles.append(entry) }
             case .content:
@@ -215,7 +234,7 @@ enum FolderSweeper {
         // 引き金になる。集めたものは丸ごと捨てて、中止したことだけを伝える。
         if cancelled { return ScanResult(wasCancelled: true) }
 
-        control.report(.scanning, seen)
+        control.report(.scanning, Progress(count: seen, fraction: 1))
         return result
     }
 
@@ -248,20 +267,27 @@ enum FolderSweeper {
         let fm = FileManager.default
         var outcome = DeleteOutcome()
         var done = 0
+        // 消す側は、何件消すか分かったうえで始める。割合は目安ではなく正確。
+        let total = items.count
+
+        func publish() {
+            let fraction = total > 0 ? Double(done) / Double(total) : nil
+            control.report(.deleting, Progress(count: progressBase + done, fraction: fraction))
+        }
 
         /// Records one finished item and answers whether to carry on. Cancellation is
         /// only ever noticed between items: stopping in the middle of a trash move
         /// would leave the folder in a worse state than simply finishing it.
         func advance() -> Bool {
             done += 1
-            if done % deleteProgressStride == 0 { control.report(.deleting, progressBase + done) }
+            if done % deleteProgressStride == 0 { publish() }
             return !control.isCancelled()
         }
 
         func stop() -> DeleteOutcome {
             outcome.wasCancelled = true
             outcome.processed = done
-            control.report(.deleting, progressBase + done)
+            publish()
             return outcome
         }
 
@@ -295,7 +321,7 @@ enum FolderSweeper {
         }
 
         outcome.processed = done
-        control.report(.deleting, progressBase + done)
+        publish()
         return outcome
     }
 

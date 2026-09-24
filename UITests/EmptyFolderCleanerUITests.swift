@@ -9,6 +9,8 @@ import XCTest
 /// scan would come back empty. Once it is up, XCUITest attaches to it by bundle id.
 final class EmptyFolderCleanerUITests: XCTestCase {
     private static let bundleID = "com.ryuujisakura.emptyfoldercleaner"
+    /// 一時フォルダの名前の頭。Finder のウィンドウ名を引き当てるのにも使う。
+    private static let fixturePrefix = "EmptyFolderCleanerUITests"
 
     private var root: URL!
 
@@ -17,7 +19,7 @@ final class EmptyFolderCleanerUITests: XCTestCase {
         continueAfterFailure = false
         terminateApp()
         root = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("EmptyFolderCleanerUITests-\(UUID().uuidString)")
+            .appendingPathComponent("\(Self.fixturePrefix)-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     }
 
@@ -165,6 +167,30 @@ final class EmptyFolderCleanerUITests: XCTestCase {
             usleep(200_000)
         }
         XCTFail("表示が『\(wanted)』になりませんでした。実際: 「\(seen)」", file: file, line: line)
+    }
+
+    /// ウィンドウを指定サイズにする。角を一度つかむだけでは、つかみ損ねたり
+    /// 画面端に当たったりで届かないことがあるので、実測して詰める。
+    /// タイトルバーを隠しているため、移動はヘッダー帯の上端をつかむ。
+    @discardableResult
+    private func resizeWindow(_ window: XCUIElement, to size: CGSize) -> CGSize {
+        let start = window.frame
+        let grab = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.01))
+        grab.press(forDuration: 0.2,
+                   thenDragTo: grab.withOffset(CGVector(dx: 20 - start.minX, dy: 60 - start.minY)))
+        usleep(400_000)
+
+        for _ in 0..<4 {
+            let current = window.frame
+            let dx = size.width - current.width
+            let dy = size.height - current.height
+            if abs(dx) < 2 && abs(dy) < 2 { break }
+            let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
+                .withOffset(CGVector(dx: -2, dy: -2))
+            corner.press(forDuration: 0.2, thenDragTo: corner.withOffset(CGVector(dx: dx, dy: dy)))
+            usleep(400_000)
+        }
+        return window.frame.size
     }
 
     private func waitForDisappearance(_ element: XCUIElement, timeout: TimeInterval = 10) -> Bool {
@@ -341,22 +367,22 @@ final class EmptyFolderCleanerUITests: XCTestCase {
 
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 10))
-        let before = window.frame
+
+        // App Store が受け付ける最小サイズ。画面に収まらない環境では検証できない。
+        let wanted = CGSize(width: 1280, height: 800)
+        let room = NSScreen.main?.visibleFrame.size ?? .zero
+        try XCTSkipUnless(room.width >= wanted.width && room.height >= wanted.height,
+                          "画面が \(wanted) より狭いので検証できません（\(room)）")
 
         // 既定サイズのほうは README 用。
         let small = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("efc-window-default.png")
         try window.screenshot().pngRepresentation.write(to: small)
         print("SHOT_DEFAULT=\(small.path)")
 
-        let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
-        corner.press(forDuration: 0.2, thenDragTo: corner.withOffset(
-            CGVector(dx: 1320 - before.width, dy: 840 - before.height)
-        ))
-        usleep(800_000)
-
-        let after = window.frame
-        XCTAssertGreaterThanOrEqual(after.width, 1280, "App Store のスクリーンショット幅まで広げられません")
-        XCTAssertGreaterThanOrEqual(after.height, 800, "App Store のスクリーンショット高さまで広げられません")
+        let after = resizeWindow(window, to: wanted)
+        XCTAssertGreaterThanOrEqual(after.width, wanted.width, "App Store のスクリーンショット幅まで広げられません")
+        XCTAssertGreaterThanOrEqual(after.height, wanted.height, "App Store のスクリーンショット高さまで広げられません")
+        print("SHOT_SIZE=\(after)")
 
         let out = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("efc-window.png")
         try window.screenshot().pngRepresentation.write(to: out)
@@ -388,6 +414,36 @@ final class EmptyFolderCleanerUITests: XCTestCase {
         helpItem.click()
 
         XCTAssertTrue(app.windows["使いかた"].waitForExistence(timeout: 10), "使いかたのウィンドウが開きません")
+    }
+
+    /// 行をダブルクリックすると、そのフォルダが Finder に出る。
+    /// 前面に来たかどうかでは判定しない。XCUITest は対象アプリを前面に保ち続けるので、
+    /// フォーカスを見ても「開いたのに前に出ていない」と区別がつかない。
+    /// 実際に Finder のウィンドウが開いたかどうかを見る。
+    func testDoubleClickingARowRevealsItInFinder() throws {
+        makeDir("確かめたい")
+
+        let app = try launchApp()
+        setToggle(app, "toggle.allDSStoreFiles", to: false)
+        waitForStatus(app, contains: "1 件の空フォルダ")
+
+        XCTAssertTrue(app.buttons["reveal.確かめたい"].waitForExistence(timeout: 10),
+                      "行の「Finderで表示」ボタンがありません")
+
+        let target = row(app, "確かめたい")
+        XCTAssertTrue(target.waitForExistence(timeout: 10))
+        target.doubleClick()
+
+        // 親フォルダのウィンドウが開いて、その中の「確かめたい」が選択される。
+        let finder = XCUIApplication(bundleIdentifier: "com.apple.finder")
+        let opened = finder.windows.containing(
+            NSPredicate(format: "title CONTAINS %@", Self.fixturePrefix)
+        ).firstMatch
+        XCTAssertTrue(opened.waitForExistence(timeout: 15), "ダブルクリックしても Finder にウィンドウが出ません")
+
+        // 開けっぱなしにすると、テストを流すたびに Finder のウィンドウが増える。
+        opened.buttons[XCUIIdentifierCloseWindow].click()
+        NSRunningApplication.runningApplications(withBundleIdentifier: Self.bundleID).first?.activate()
     }
 
     func testCancellingTheConfirmationDeletesNothing() throws {

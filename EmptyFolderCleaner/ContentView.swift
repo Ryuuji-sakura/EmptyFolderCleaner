@@ -108,6 +108,10 @@ struct ContentView: View {
                 Spacer(minLength: 0)
             }
 
+            if model.isBusy {
+                progressBar
+            }
+
             statusBadge
 
             if model.showDSStoreReappearNote {
@@ -231,13 +235,17 @@ struct ContentView: View {
             }
 
             Spacer()
-
-            if model.isBusy {
-                ProgressView()
-                    .controlSize(.small)
-                    .accessibilityLabel("処理中")
-            }
         }
+    }
+
+    /// 走査中の割合は、渡されたフォルダの直下を等分した**目安**でしかないので、
+    /// パーセントの数字は出さない。正確なのは帯の下に出る実件数のほう。
+    /// 目安すら立たないうちは `value` が nil になり、伸び縮みするだけの帯になる。
+    private var progressBar: some View {
+        ProgressView(value: model.progress)
+            .progressViewStyle(.linear)
+            .accessibilityIdentifier("progress.scan")
+            .accessibilityLabel(model.isDeleting ? "削除の進み具合" : "スキャンの進み具合")
     }
 
     private var optionToggles: some View {
@@ -383,8 +391,14 @@ struct ContentView: View {
                                 .truncationMode(.middle)
                             Spacer(minLength: 0)
                         }
+                        // 行の右端のボタンだけでは気づかれない。Finderと同じく
+                        // ダブルクリックでも開けるようにする。
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2) { model.revealInFinder(item.url) }
+                        .help("ダブルクリックでFinderに表示")
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("\(item.isFolder ? "フォルダ" : "ファイル") \(path)")
+                        .accessibilityHint("ダブルクリックでFinderに表示します")
                         .accessibilityIdentifier("row.\(path)")
 
                         Button {

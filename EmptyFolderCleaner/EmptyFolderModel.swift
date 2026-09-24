@@ -19,6 +19,9 @@ final class EmptyFolderModel: ObservableObject {
     /// 中止を頼んだあと、実際に止まるまでの間。ボタンを押しても一拍あるので、
     /// その一拍のあいだ「中止しています」と出したまま進捗表示に上書きさせない。
     @Published private(set) var isCancelling = false
+    /// 帯グラフの進み具合（0...1）。走査中は**目安**で、削除中は正確。
+    /// 分からないうちは nil で、そのときは伸び縮みするだけの帯になる。
+    @Published private(set) var progress: Double?
     // すぐ上のドロップ領域と同じことを繰り返しても情報が増えない。フォルダを消すアプリで
     // 最初に伝えるべきなのは「選んだフォルダ自体は消えない」という一点。
     @Published var statusMessage = "選んだフォルダの中から、空のフォルダを探します。選んだフォルダ自体は消えません。"
@@ -165,6 +168,7 @@ final class EmptyFolderModel: ObservableObject {
         guard let root = targetFolder, !isDeleting else { return }
         let token = beginOperation()
         isScanning = true
+        progress = nil
         emptyFolders = []
         dsStoreFiles = []
         selectedPaths = []
@@ -226,6 +230,7 @@ final class EmptyFolderModel: ObservableObject {
         let usingTrash = moveToTrash
         let token = beginOperation()
         isDeleting = true
+        progress = nil
         statusMessage = usingTrash ? "ゴミ箱に移動中..." : "削除中..."
         let control = makeControl(token: token)
 
@@ -255,6 +260,7 @@ final class EmptyFolderModel: ObservableObject {
     private func finishOperation() {
         runningTask = nil
         isCancelling = false
+        progress = nil
     }
 
     /// キャンセル判定は detached タスク自身のフラグを読む。`FolderSweeper` は
@@ -264,20 +270,21 @@ final class EmptyFolderModel: ObservableObject {
     private nonisolated func makeControl(token: Int) -> FolderSweeper.Control {
         FolderSweeper.Control(
             isCancelled: { Task.isCancelled },
-            report: { phase, count in
-                Task { @MainActor in self.reportProgress(phase, count, token: token) }
+            report: { phase, progress in
+                Task { @MainActor in self.reportProgress(phase, progress, token: token) }
             }
         )
     }
 
-    private func reportProgress(_ phase: FolderSweeper.Phase, _ count: Int, token: Int) {
+    private func reportProgress(_ phase: FolderSweeper.Phase, _ update: FolderSweeper.Progress, token: Int) {
         guard currentToken == token, isBusy, !isCancelling else { return }
+        progress = update.fraction
         switch phase {
         case .scanning:
-            statusMessage = "スキャン中... \(count.formatted()) 項目"
+            statusMessage = "スキャン中... \(update.count.formatted()) 項目"
         case .deleting:
             let verb = moveToTrash ? "ゴミ箱に移動中" : "削除中"
-            statusMessage = "\(verb)... \(count.formatted()) 件"
+            statusMessage = "\(verb)... \(update.count.formatted()) 件"
         }
     }
 
