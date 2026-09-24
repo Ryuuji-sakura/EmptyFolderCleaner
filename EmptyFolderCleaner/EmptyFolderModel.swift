@@ -12,6 +12,9 @@ final class EmptyFolderModel: ObservableObject {
     @Published private(set) var dsStoreFiles: [URL] = []
     @Published private(set) var isScanning = false
     @Published private(set) var isDeleting = false
+    /// 中止を頼んだあと、実際に止まるまでの間。ボタンを押しても一拍あるので、
+    /// その一拍のあいだ「中止しています」と出したまま進捗表示に上書きさせない。
+    @Published private(set) var isCancelling = false
     // すぐ上のドロップ領域と同じことを繰り返しても情報が増えない。フォルダを消すアプリで
     // 最初に伝えるべきなのは「選んだフォルダ自体は消えない」という一点。
     @Published var statusMessage = "選んだフォルダの中から、空のフォルダを探します。選んだフォルダ自体は消えません。"
@@ -59,6 +62,11 @@ final class EmptyFolderModel: ObservableObject {
     /// ran — can no longer land on top of the newer one's results.
     private var currentToken = 0
 
+    /// いま走っているスキャン／削除。トークンだけでは結果を捨てているだけで、
+    /// ディスクを読み続ける処理そのものは止まらない。中止ボタンと、対象の
+    /// 差し替えによる打ち切りの両方が、このハンドル経由で本当に止める。
+    private var runningTask: Task<Void, Never>?
+
     private init() {
         let defaults = UserDefaults.standard
         // Registered rather than read with `object(forKey:) as? Bool` so that a
@@ -95,7 +103,7 @@ final class EmptyFolderModel: ObservableObject {
         // 対象だけ差し替わると、`scan()` が走らないまま画面のパスと一覧が食い違い、
         // 次の削除がユーザーの見ていないフォルダに対して走ってしまう。
         guard !isBusy else {
-            statusMessage = "処理中です。終わってからもう一度ドロップしてください。"
+            statusMessage = "処理中です。中止するか、終わるのを待ってからもう一度ドロップしてください。"
             return
         }
         var isDir: ObjCBool = false
@@ -130,16 +138,37 @@ final class EmptyFolderModel: ObservableObject {
         showDSStoreReappearNote = false
         statusMessage = "スキャン中..."
         let options = sweepOptions
-        Task.detached(priority: .userInitiated) {
-            let result = FolderSweeper.scan(root: root, options: options)
+        let control = makeControl(token: token)
+        runningTask = Task.detached(priority: .userInitiated) {
+            let result = FolderSweeper.scan(root: root, options: options, control: control)
             await MainActor.run {
                 guard self.currentToken == token else { return }
+                self.finishOperation()
+                self.isScanning = false
+                guard !result.wasCancelled else {
+                    self.statusMessage = "スキャンを中止しました。もう一度調べるには「もう一度調べる」を押してください。"
+                    return
+                }
                 self.emptyFolders = result.emptyFolders
                 self.dsStoreFiles = result.dsStoreFiles
-                self.isScanning = false
                 self.statusMessage = Self.foundSummary(result)
             }
         }
+    }
+
+    /// 中止したあとや、対象はそのままで調べ直したいときの入口。
+    func rescan() {
+        guard !isBusy else { return }
+        scan()
+    }
+
+    /// 走っている処理を止めるよう頼む。削除の途中なら、いま扱っている 1 件を
+    /// 終えてから止まる。すでに消したものは消えたまま — だから結果は伏せずに出す。
+    func cancel() {
+        guard isBusy, !isCancelling else { return }
+        isCancelling = true
+        runningTask?.cancel()
+        statusMessage = "中止しています..."
     }
 
     /// The sweep re-scans instead of deleting the list on screen: that list is a
@@ -159,11 +188,13 @@ final class EmptyFolderModel: ObservableObject {
         let token = beginOperation()
         isDeleting = true
         statusMessage = usingTrash ? "ゴミ箱に移動中..." : "削除中..."
+        let control = makeControl(token: token)
 
-        Task.detached(priority: .userInitiated) {
-            let result = FolderSweeper.sweep(root: root, options: options)
+        runningTask = Task.detached(priority: .userInitiated) {
+            let result = FolderSweeper.sweep(root: root, options: options, control: control)
             await MainActor.run {
                 guard self.currentToken == token else { return }
+                self.finishOperation()
                 self.emptyFolders = result.remaining.emptyFolders
                 self.dsStoreFiles = result.remaining.dsStoreFiles
                 self.isDeleting = false
@@ -174,8 +205,40 @@ final class EmptyFolderModel: ObservableObject {
     }
 
     private func beginOperation() -> Int {
+        // 走っていたものは結果を捨てるだけでなく、実際に止めてから次へ進む。
+        runningTask?.cancel()
+        isCancelling = false
         currentToken += 1
         return currentToken
+    }
+
+    private func finishOperation() {
+        runningTask = nil
+        isCancelling = false
+    }
+
+    /// キャンセル判定は detached タスク自身のフラグを読む。`FolderSweeper` は
+    /// このタスクの上で同期的に走るので、`Task.isCancelled` はその処理に届く。
+    /// 進捗は背景スレッドから来るため、メインアクターへ渡し直したうえで、
+    /// 追い越された古い処理がラベルを書き換えないようトークンで弾く。
+    private nonisolated func makeControl(token: Int) -> FolderSweeper.Control {
+        FolderSweeper.Control(
+            isCancelled: { Task.isCancelled },
+            report: { phase, count in
+                Task { @MainActor in self.reportProgress(phase, count, token: token) }
+            }
+        )
+    }
+
+    private func reportProgress(_ phase: FolderSweeper.Phase, _ count: Int, token: Int) {
+        guard currentToken == token, isBusy, !isCancelling else { return }
+        switch phase {
+        case .scanning:
+            statusMessage = "スキャン中... \(count.formatted()) 項目"
+        case .deleting:
+            let verb = moveToTrash ? "ゴミ箱に移動中" : "削除中"
+            statusMessage = "\(verb)... \(count.formatted()) 件"
+        }
     }
 
     // MARK: - Messages
@@ -213,22 +276,28 @@ final class EmptyFolderModel: ObservableObject {
             ? " まだ残りがあります。もう一度実行してください。"
             : ""
 
+        // 中止したときは残りの一覧を画面に戻していない。途中まで消したあとの古い
+        // 一覧を見せることになるからで、何が残っているかは調べ直さないと言えない。
+        let rescanHint = "残りを調べるには「もう一度調べる」を押してください。"
+        let stopped = result.wasCancelled ? " 中止しました。\(rescanHint)" : ""
+
         // Shown only when the sweep ended with nothing left to delete, so this really
         // is the last word — not just "this pass found no failures".
-        let confirmed = (result.remaining.isEmpty && result.skipped.isEmpty)
+        let confirmed = (!result.wasCancelled && result.remaining.isEmpty && result.skipped.isEmpty)
             ? "確認済み・消し残しはありません。"
             : ""
 
         switch (parts.isEmpty, result.failures.isEmpty) {
         case (true, true):
+            if result.wasCancelled { return "中止しました。削除したものはありません。\(rescanHint)" }
             return skipped.isEmpty ? "削除できるものはありませんでした。" : "削除しませんでした。\(skipped)"
         case (true, false):
             // Nothing came out, so "nothing to delete was found" would contradict itself.
-            return "\(failed)\(skipped)\(limit)"
+            return "\(failed)\(skipped)\(stopped)\(limit)"
         case (false, true):
-            return "\(parts.joined(separator: "、"))\(verb)。\(confirmed)\(skipped)\(limit)"
+            return "\(parts.joined(separator: "、"))\(verb)。\(confirmed)\(skipped)\(stopped)\(limit)"
         case (false, false):
-            return "\(parts.joined(separator: "、"))\(verb)。 \(failed)\(skipped)\(limit)"
+            return "\(parts.joined(separator: "、"))\(verb)。 \(failed)\(skipped)\(stopped)\(limit)"
         }
     }
 }

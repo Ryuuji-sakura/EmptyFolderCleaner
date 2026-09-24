@@ -423,4 +423,117 @@ final class FolderSweeperTests: XCTestCase {
         XCTAssertFalse(exists(name))
         XCTAssertTrue(trashEntries(withPrefix: name).isEmpty)
     }
+
+    // MARK: - Cancellation and progress
+
+    /// Says "keep going" for the first `stopAfter` questions and "stop" from then on,
+    /// so a test can pull the plug at a known point without reaching into the sweeper.
+    private final class Trip: @unchecked Sendable {
+        private let lock = NSLock()
+        private var asked = 0
+        private let stopAfter: Int
+        init(stopAfter: Int) { self.stopAfter = stopAfter }
+        var isCancelled: Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            asked += 1
+            return asked >= stopAfter
+        }
+    }
+
+    /// Collects progress reports from whichever thread they arrive on.
+    private final class Reports: @unchecked Sendable {
+        private let lock = NSLock()
+        private var values: [(FolderSweeper.Phase, Int)] = []
+        func add(_ phase: FolderSweeper.Phase, _ count: Int) {
+            lock.lock()
+            defer { lock.unlock() }
+            values.append((phase, count))
+        }
+        func counts(for phase: FolderSweeper.Phase) -> [Int] {
+            lock.lock()
+            defer { lock.unlock() }
+            return values.filter { $0.0 == phase }.map(\.1)
+        }
+    }
+
+    /// The tree has to be wide enough that the walk actually pauses to ask; below
+    /// the progress stride it would finish before the first question.
+    private func makeWideTree(count: Int) {
+        for i in 0..<count { makeDir("wide/\(i)") }
+    }
+
+    /// A cancelled scan must not hand back the empty folders it had gathered. They
+    /// only *looked* empty: the file that would have kept one alive may sit in a
+    /// part of the tree the walk never reached, and the caller deletes what it is
+    /// given. So a stopped scan returns nothing at all.
+    func testCancelledScanReturnsNoCandidates() {
+        makeWideTree(count: 600)
+        makeFile("wide/599/請求書.pdf")
+        let trip = Trip(stopAfter: 1)
+
+        let result = FolderSweeper.scan(
+            root: root,
+            options: bothOn,
+            control: FolderSweeper.Control(isCancelled: { trip.isCancelled }, report: { _, _ in })
+        )
+
+        XCTAssertTrue(result.wasCancelled)
+        XCTAssertTrue(result.emptyFolders.isEmpty, "中止したスキャンが削除候補を返しました")
+        XCTAssertTrue(result.dsStoreFiles.isEmpty)
+    }
+
+    /// Cancelling during the delete cannot un-delete anything, so the count that
+    /// comes back has to be the truth about what already went.
+    func testCancelledSweepStopsEarlyAndReportsWhatItAlreadyDeleted() {
+        for i in 0..<6 { makeDir("箱\(i)") }
+        // 削除は 1 件ごとに中止を確認する。2 回目の確認で止まる = 2 件消えたところ。
+        let trip = Trip(stopAfter: 2)
+
+        let result = FolderSweeper.sweep(
+            root: root,
+            options: bothOn,
+            control: FolderSweeper.Control(isCancelled: { trip.isCancelled }, report: { _, _ in })
+        )
+
+        XCTAssertTrue(result.wasCancelled)
+        XCTAssertEqual(result.deletedFolders, 2)
+        XCTAssertFalse(result.hitPassLimit)
+        let left = (0..<6).filter { exists("箱\($0)") }
+        XCTAssertEqual(left.count, 4, "止めたあとも削除が続いています")
+        // 消しかけの木を一覧として返すと、すでに無い行を「残り」として見せてしまう。
+        XCTAssertTrue(result.remaining.isEmpty)
+    }
+
+    /// The whole point of the counter is that it moves while a long scan is running,
+    /// not only when it ends.
+    func testScanReportsProgressWhileItRuns() {
+        makeWideTree(count: 500)
+        let reports = Reports()
+
+        let result = FolderSweeper.scan(
+            root: root,
+            options: bothOn,
+            control: FolderSweeper.Control(isCancelled: { false }, report: { reports.add($0, $1) })
+        )
+
+        let counts = reports.counts(for: .scanning)
+        XCTAssertFalse(result.wasCancelled)
+        XCTAssertGreaterThan(counts.count, 1, "終わったときしか進捗が出ていません")
+        XCTAssertEqual(counts, counts.sorted(), "進捗が戻っています")
+        // `wide` そのものと、その下の 500 個。
+        XCTAssertEqual(counts.last, 501)
+    }
+
+    /// Nothing in the sweeper may change behaviour just because nobody is watching:
+    /// the default control has to leave the old results exactly as they were.
+    func testDefaultControlNeitherCancelsNorReports() {
+        makeDir("a/b/c")
+
+        let result = FolderSweeper.sweep(root: root, options: bothOn)
+
+        XCTAssertFalse(result.wasCancelled)
+        XCTAssertEqual(result.deletedFolders, 3)
+        XCTAssertFalse(exists("a"))
+    }
 }

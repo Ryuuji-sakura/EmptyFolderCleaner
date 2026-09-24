@@ -107,7 +107,30 @@ struct ContentView: View {
             }
 
             HStack {
+                // 中止したあとや、外で中身が変わったあとに調べ直すための導線。
+                // これがないと、中止 = 行き止まりになる。
+                if model.targetFolder != nil, !model.isBusy {
+                    Button {
+                        model.rescan()
+                    } label: {
+                        Label("もう一度調べる", systemImage: "arrow.clockwise")
+                    }
+                    .controlSize(.small)
+                    .accessibilityIdentifier("button.rescan")
+                }
+
                 Spacer()
+
+                if model.isBusy {
+                    Button("中止") {
+                        model.cancel()
+                    }
+                    .buttonStyle(PopButtonStyle(colors: [Color.deepCyan, Color.deepBlue]))
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isCancelling)
+                    .accessibilityIdentifier("button.cancel")
+                }
+
                 if model.hasDeletableItems {
                     Button {
                         confirmAndDelete()

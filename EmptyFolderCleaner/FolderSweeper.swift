@@ -25,6 +25,30 @@ enum FolderSweeper {
         var moveToTrash: Bool = true
     }
 
+    // MARK: - Cancellation and progress
+
+    /// Which half of a sweep a progress count belongs to. The two are counted in
+    /// different units — entries looked at versus items disposed of — so the caller
+    /// has to know which number it is being handed.
+    enum Phase: Sendable { case scanning, deleting }
+
+    /// Cooperative cancellation and progress, injected rather than read from
+    /// `Task.isCancelled`, so the walk stays drivable straight from a synchronous
+    /// test with no task around it.
+    struct Control: Sendable {
+        var isCancelled: @Sendable () -> Bool
+        var report: @Sendable (Phase, Int) -> Void
+
+        static let none = Control(isCancelled: { false }, report: { _, _ in })
+    }
+
+    /// How often progress is published. Rare enough that the hop out of the walk
+    /// costs nothing next to the `stat` calls around it, frequent enough that the
+    /// counter still moves on a slow network volume.
+    private static let scanProgressStride = 400
+    /// Deleting is orders of magnitude slower per item, so it reports far sooner.
+    private static let deleteProgressStride = 20
+
     // MARK: - What an entry means
 
     /// How a directory entry counts when deciding whether its folder is empty.
@@ -82,6 +106,8 @@ enum FolderSweeper {
     struct ScanResult: Sendable, Equatable {
         var emptyFolders: [URL] = []
         var dsStoreFiles: [URL] = []
+        /// The walk was stopped part way, so the lists above are deliberately empty.
+        var wasCancelled = false
         var isEmpty: Bool { emptyFolders.isEmpty && dsStoreFiles.isEmpty }
         var count: Int { emptyFolders.count + dsStoreFiles.count }
     }
@@ -97,6 +123,10 @@ enum FolderSweeper {
         var failures: [Failure] = []
         /// Left alone because it gained content between the scan and the delete.
         var skipped: [URL] = []
+        /// Stopped part way; everything already removed is still counted above.
+        var wasCancelled = false
+        /// Items dealt with, whatever the outcome — what the progress counter reached.
+        var processed = 0
         var deletedCount: Int { deletedFolders + deletedFiles }
     }
 
@@ -107,6 +137,8 @@ enum FolderSweeper {
         var skipped: [URL] = []
         /// The tree still had candidates when the pass limit ran out.
         var hitPassLimit = false
+        /// Stopped on request. Whatever was already deleted is counted above.
+        var wasCancelled = false
         /// What is still deletable when the sweep stopped — empty on a clean run.
         var remaining = ScanResult()
     }
@@ -115,12 +147,23 @@ enum FolderSweeper {
 
     /// A directory is "empty" when it and everything beneath it holds no real files.
     /// The root itself is never a deletion candidate.
-    static func scan(root: URL, options: Options) -> ScanResult {
+    static func scan(root: URL, options: Options, control: Control = .none) -> ScanResult {
         let fm = FileManager.default
         var result = ScanResult()
+        var seen = 0
+        var cancelled = false
 
         func contents(of dir: URL) -> [URL]? {
             try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        }
+
+        /// Counts one entry, and every so often publishes the total and asks whether
+        /// we are still wanted.
+        func note() {
+            seen += 1
+            guard seen % scanProgressStride == 0 else { return }
+            control.report(.scanning, seen)
+            if control.isCancelled() { cancelled = true }
         }
 
         @discardableResult
@@ -130,6 +173,8 @@ enum FolderSweeper {
             var hasRealFile = false
             var localDSStore: [URL] = []
             for entry in entries {
+                if cancelled { return false }
+                note()
                 switch classify(entry) {
                 case .folder:
                     if !visit(entry) { allChildrenEmpty = false }
@@ -140,6 +185,7 @@ enum FolderSweeper {
                     hasRealFile = true
                 }
             }
+            if cancelled { return false }
             let isEmpty = !hasRealFile && allChildrenEmpty
             if isEmpty {
                 // The folder goes as a whole; its `.DS_Store` rides along with it.
@@ -152,6 +198,8 @@ enum FolderSweeper {
 
         guard let topEntries = contents(of: root) else { return ScanResult() }
         for entry in topEntries {
+            if cancelled { break }
+            note()
             switch classify(entry) {
             case .folder:
                 visit(entry)
@@ -161,6 +209,13 @@ enum FolderSweeper {
                 break
             }
         }
+
+        // 途中で止めた木は、まだ開いていない場所にファイルが残っているかもしれない。
+        // 「空に見えた」だけのフォルダを削除候補として返すと、キャンセルがデータ損失の
+        // 引き金になる。集めたものは丸ごと捨てて、中止したことだけを伝える。
+        if cancelled { return ScanResult(wasCancelled: true) }
+
+        control.report(.scanning, seen)
         return result
     }
 
@@ -186,32 +241,61 @@ enum FolderSweeper {
 
     // MARK: - Deleting
 
-    static func delete(_ items: ScanResult, options: Options) -> DeleteOutcome {
+    /// `progressBase` is what the counter had already reached when this pass began,
+    /// so a multi-pass sweep shows one number that keeps climbing rather than one
+    /// that restarts at zero each round.
+    static func delete(_ items: ScanResult, options: Options, control: Control = .none, progressBase: Int = 0) -> DeleteOutcome {
         let fm = FileManager.default
         var outcome = DeleteOutcome()
+        var done = 0
+
+        /// Records one finished item and answers whether to carry on. Cancellation is
+        /// only ever noticed between items: stopping in the middle of a trash move
+        /// would leave the folder in a worse state than simply finishing it.
+        func advance() -> Bool {
+            done += 1
+            if done % deleteProgressStride == 0 { control.report(.deleting, progressBase + done) }
+            return !control.isCancelled()
+        }
+
+        func stop() -> DeleteOutcome {
+            outcome.wasCancelled = true
+            outcome.processed = done
+            control.report(.deleting, progressBase + done)
+            return outcome
+        }
 
         for url in items.dsStoreFiles {
             record(removeFile(url, using: fm, moveToTrash: options.moveToTrash), for: url, isFolder: false, into: &outcome)
+            if !advance() { return stop() }
         }
 
+        let folders: [URL]
         if options.moveToTrash {
             // Shallowest first, so a nested run of empty folders arrives in the Trash
             // as ONE restorable item; deleting the children separately would scatter
             // them as flat entries and break Finder's "Put Back". A child that has
             // already gone with its parent reports `.gone`, and still counts — it did
             // disappear in this operation.
-            for url in items.emptyFolders.sorted(by: { $0.pathComponents.count < $1.pathComponents.count }) {
-                record(trashFolder(url, options: options, using: fm), for: url, isFolder: true, into: &outcome)
-            }
+            folders = items.emptyFolders.sorted { $0.pathComponents.count < $1.pathComponents.count }
         } else {
             // Deepest first, because each folder is removed with rmdir(2), which only
             // succeeds on an already-empty directory. That is the whole point: a
             // recursive removeItem would silently take along any file created since
             // the scan, and this cannot.
-            for url in items.emptyFolders.sorted(by: { $0.pathComponents.count > $1.pathComponents.count }) {
-                record(removeEmptyDirectory(url, using: fm), for: url, isFolder: true, into: &outcome)
-            }
+            folders = items.emptyFolders.sorted { $0.pathComponents.count > $1.pathComponents.count }
         }
+
+        for url in folders {
+            let result = options.moveToTrash
+                ? trashFolder(url, options: options, using: fm)
+                : removeEmptyDirectory(url, using: fm)
+            record(result, for: url, isFolder: true, into: &outcome)
+            if !advance() { return stop() }
+        }
+
+        outcome.processed = done
+        control.report(.deleting, progressBase + done)
         return outcome
     }
 
@@ -311,10 +395,15 @@ enum FolderSweeper {
     /// Always scans first rather than accepting a caller's list: a list handed in
     /// from the UI is a snapshot, and a folder that gained a file since then must not
     /// be deleted on the strength of it.
-    static func sweep(root: URL, options: Options) -> SweepResult {
+    static func sweep(root: URL, options: Options, control: Control = .none) -> SweepResult {
         let fm = FileManager.default
-        var pending = scan(root: root, options: options)
+        var pending = scan(root: root, options: options, control: control)
         var result = SweepResult()
+        // Stopped before anything was deleted. Nothing to report but the stop itself.
+        guard !pending.wasCancelled else {
+            result.wasCancelled = true
+            return result
+        }
         guard !pending.isEmpty else { return result }
 
         // Failures and skips are accumulated across passes rather than overwritten:
@@ -323,19 +412,30 @@ enum FolderSweeper {
         var failures: [URL: String] = [:]
         var skipped: Set<URL> = []
         var passesUsed = 0
+        var processed = 0
 
         for _ in 0..<maxPasses {
             passesUsed += 1
-            let outcome = delete(pending, options: options)
+            let outcome = delete(pending, options: options, control: control, progressBase: processed)
+            processed += outcome.processed
             result.deletedFolders += outcome.deletedFolders
             result.deletedFiles += outcome.deletedFiles
             for failure in outcome.failures { failures[failure.url] = failure.message }
             skipped.formUnion(outcome.skipped)
 
+            if outcome.wasCancelled {
+                result.wasCancelled = true
+                break
+            }
+
             // Nothing moved: whatever is left is genuinely stuck, stop retrying.
             if outcome.deletedCount == 0 { break }
 
-            let next = scan(root: root, options: options)
+            let next = scan(root: root, options: options, control: control)
+            if next.wasCancelled {
+                result.wasCancelled = true
+                break
+            }
             if next.isEmpty {
                 pending = ScanResult()
                 break
@@ -343,7 +443,12 @@ enum FolderSweeper {
             pending = next
         }
 
-        result.hitPassLimit = passesUsed == maxPasses && !pending.isEmpty
+        // After a stop, the pending list is a snapshot of a tree we have since been
+        // deleting from, so it no longer describes anything. The caller is told to
+        // scan again rather than shown a list that is partly already gone.
+        if result.wasCancelled { pending = ScanResult() }
+
+        result.hitPassLimit = !result.wasCancelled && passesUsed == maxPasses && !pending.isEmpty
         result.failures = failures
             .filter { fm.fileExists(atPath: $0.key.path) }
             .map { Failure(url: $0.key, message: $0.value) }
