@@ -37,10 +37,12 @@ step "プロジェクトを生成"
 xcodegen generate
 
 step "テストを実行"
+# ログの出力先は先に作る。ここで作らないと、build-mas/ が無い状態（クリーンな
+# チェックアウト直後）でリダイレクトそのものが失敗し、テストが走らない。
+mkdir -p "$OUT"
 # `| tail` を通すと終了コードが tail のものになり、失敗しても素通りする。
 if ! xcodebuild -project "$SCHEME.xcodeproj" -scheme "$SCHEME" \
         -configuration Debug -derivedDataPath build test > "$OUT/test.log" 2>&1; then
-    mkdir -p "$OUT"
     grep -E "error:|Executed .* tests" "$OUT/test.log" | tail -20
     echo "テストが失敗しました。詳細: $OUT/test.log" >&2
     exit 1

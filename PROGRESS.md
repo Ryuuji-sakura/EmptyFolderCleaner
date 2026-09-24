@@ -724,5 +724,54 @@ UIテストで実際に角をドラッグして 1320×840 まで広がること�
 - サポートURL・プライバシーポリシーURL。`Ryuuji-sakura.github.io` に
   `emptyfoldercleaner/index.html` と `privacy.html` を足す必要がある
 - スクリーンショット（`testWindowCanReachAppStoreScreenshotSize` が書き出すPNGが使える）
-- バージョンを上げる（現在 1.4 / ビルド5。フェーズ3の内容は 1.5 相当）
-- `Scripts/appstore.sh` で .pkg を作って提出
+- ~~バージョンを上げる~~ → 1.5 / ビルド6 に更新済み
+- ~~`Scripts/appstore.sh` で .pkg を作る~~ → 作成・検証済み
+  （`build-mas/export/EmptyFolderCleaner.pkg`。**未送信**）
+- App Store Connect への送信（Transporter.app か Xcode の Organizer から手動）。
+  **アプリ登録が先**
+
+
+## 完了項目（2026-09-24 / v1.5 の .pkg 作成）
+
+### サポートページを公開
+
+`ryuuji-sakura.github.io` に `emptyfoldercleaner/index.html` と `privacy.html` を追加。
+コートポン！と同じ構成（日本語の下に英語、静的HTML、依存なし）。公開を実際に
+HTTP 200 で確認済み（GitHub Pages の反映に約1分かかる）。
+
+- サポート: https://ryuuji-sakura.github.io/emptyfoldercleaner/
+- プライバシー: https://ryuuji-sakura.github.io/emptyfoldercleaner/privacy.html
+
+プライバシーポリシーは推測せず、コードを確認した事実だけを書いている。
+通信コードは一件も無く（`URLSession`・`http` すべて該当なし）、entitlements は
+`app-sandbox` と `files.user-selected.read-write` の2つだけ、`UserDefaults` に
+保存しているのは3つの設定フラグのみ。だから「一切の通信を行いません」と断言できる。
+
+### 著作権表記を屋号に統一
+
+`NSHumanReadableCopyright` を `© 2026 半歩舎` に変更（サポートサイトに合わせた）。
+`LICENSE` の MIT 著作権者は法的な記載なので `Ryuuji Hara` のまま。
+
+### v1.5 / ビルド6 の .pkg
+
+`./Scripts/appstore.sh` で作成。検証は全部通っている。
+
+| 項目 | 結果 |
+| --- | --- |
+| `com.apple.application-identifier` | あり（`Y9B2784T8A.com.ryuujisakura.emptyfoldercleaner`） |
+| `get-task-allow` | 無し |
+| `embedded.provisionprofile` | あり |
+| アプリの署名 | Apple Distribution: Ryuuji Hara |
+| .pkg の署名 | 3rd Party Mac Developer Installer |
+| entitlements | sandbox と user-selected のみ |
+| バージョン | 1.5 / 6 |
+| サイズ | 2.1MB |
+
+**まだ送っていない。** 提出は取り消せないので、App Store Connect にアプリを
+登録してから手で送る。
+
+### appstore.sh のバグを1つ修正
+
+テストログを `$OUT/test.log` にリダイレクトする前に `mkdir -p "$OUT"` していなかった。
+`build-mas/` が無い状態（クリーンなチェックアウト直後）だと、リダイレクトそのものが
+失敗してテストが走らない。`mkdir` をテスト実行の前に移した。
