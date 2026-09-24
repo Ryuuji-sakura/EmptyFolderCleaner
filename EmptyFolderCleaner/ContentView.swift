@@ -2,36 +2,51 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// 白文字を乗せる色は、すべて WCAG のコントラスト比 4.5:1（本文基準）以上を満たす
+/// ところまで濃くしてある。元のパレットは見た目こそ明るかったが、シアン側では
+/// 1.63:1 しかなく、削除対象の一覧が事実上読めなかった。
 private extension Color {
-    static let popMagenta = Color(red: 0.78, green: 0.30, blue: 0.92)
-    static let popBlue = Color(red: 0.35, green: 0.62, blue: 1.00)
-    static let popCyan = Color(red: 0.25, green: 0.87, blue: 0.93)
-    static let popPurple = Color(red: 0.66, green: 0.52, blue: 1.00)
-    static let popPink = Color(red: 1.00, green: 0.53, blue: 0.78)
-    static let popCoral = Color(red: 1.00, green: 0.58, blue: 0.42)
-    static let popMint = Color(red: 0.30, green: 0.92, blue: 0.78)
-    static let popYellow = Color(red: 1.00, green: 0.86, blue: 0.40)
+    static let deepMagenta = Color(red: 0.55, green: 0.15, blue: 0.72)  // 6.80:1
+    static let deepBlue = Color(red: 0.16, green: 0.36, blue: 0.78)     // 6.10:1
+    static let deepCyan = Color(red: 0.08, green: 0.45, blue: 0.55)     // 5.45:1
+    static let deepRose = Color(red: 0.78, green: 0.13, blue: 0.32)     // 5.58:1
+    static let deepCoral = Color(red: 0.76, green: 0.24, blue: 0.12)    // 5.28:1
+
+    static let brandGradient = [deepMagenta, deepBlue, deepCyan]
 }
 
-/// A round, bouncy button style: brighter + slightly larger on hover, squishes on press.
+/// A round, bouncy button style: squishes on press.
 private struct PopButtonStyle: ButtonStyle {
     var colors: [Color]
-    var textColor: Color = .white
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(.body, design: .rounded).weight(.bold))
-            .foregroundStyle(textColor)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(
-                Capsule()
-                    .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-            )
-            .overlay(Capsule().strokeBorder(Color.white.opacity(0.35), lineWidth: 1))
-            .shadow(color: (colors.first ?? .black).opacity(0.4), radius: configuration.isPressed ? 2 : 8, y: configuration.isPressed ? 1 : 4)
-            .scaleEffect(configuration.isPressed ? 0.94 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
+        StyledLabel(configuration: configuration, colors: colors)
+    }
+
+    /// `ButtonStyle.makeBody` からは `@Environment` を読めないので、中に View を挟む。
+    private struct StyledLabel: View {
+        let configuration: Configuration
+        let colors: [Color]
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+        var body: some View {
+            configuration.label
+                .font(.system(.body, design: .rounded).weight(.bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(
+                    Capsule()
+                        .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                )
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
+                .shadow(color: (colors.first ?? .black).opacity(0.35),
+                        radius: configuration.isPressed ? 2 : 6,
+                        y: configuration.isPressed ? 1 : 3)
+                .scaleEffect(configuration.isPressed ? 0.94 : 1.0)
+                .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.6),
+                           value: configuration.isPressed)
+        }
     }
 }
 
@@ -39,101 +54,121 @@ struct ContentView: View {
     @EnvironmentObject private var model: EmptyFolderModel
     @State private var isTargeted = false
     @State private var showsDSStoreHelp = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color.popMagenta, Color.popBlue, Color.popCyan],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .ignoresSafeArea()
+        // グラデーションはヘッダー帯とボタンだけに残し、情報を読む領域は
+        // システムの背景色に戻す。これで可読性・ダークモード・透明度を下げる設定が
+        // まとめて OS 任せになる。
+        VStack(spacing: 0) {
+            headerBand
+            content
+        }
+        .frame(width: 500, height: 620)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var headerBand: some View {
+        ZStack(alignment: .leading) {
+            LinearGradient(colors: Color.brandGradient, startPoint: .leading, endPoint: .trailing)
 
             backgroundDog
 
-            VStack(alignment: .leading, spacing: 18) {
-                header
-                dropZone
-                folderRow
-                optionToggles
+            HStack(spacing: 10) {
+                Text("🧹")
+                    .font(.system(size: 28))
+                    .accessibilityHidden(true)
+                Text("空フォルダ削除")
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+            .accessibilityElement(children: .combine)
+            // タイトルバーを隠しているので、信号機ボタンの下に来るよう余白を取る。
+            .padding(.top, 20)
+            .padding(.horizontal, 22)
+        }
+        .frame(height: 88)
+    }
 
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            dropZone
+            folderRow
+            optionToggles
+
+            if model.hasDeletableItems {
+                resultsList
+            }
+
+            statusBadge
+
+            if model.showDSStoreReappearNote {
+                dsStoreReappearNote
+            }
+
+            HStack {
+                Spacer()
                 if model.hasDeletableItems {
-                    resultsList
-                }
-
-                statusBadge
-
-                if model.showDSStoreReappearNote {
-                    dsStoreReappearNote
-                }
-
-                HStack {
-                    Spacer()
-                    if model.hasDeletableItems {
-                        Button {
-                            confirmAndDelete()
-                        } label: {
-                            Text("\(model.moveToTrash ? "🗑️ ゴミ箱に入れる" : "⚠️ 完全に削除する")（\(model.totalDeletableCount)件）")
-                        }
-                        .buttonStyle(PopButtonStyle(colors: [Color.popPink, Color.popCoral]))
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(model.isBusy)
-                        .accessibilityIdentifier("button.delete")
+                    Button {
+                        confirmAndDelete()
+                    } label: {
+                        Text("\(model.moveToTrash ? "ゴミ箱に入れる" : "完全に削除する")（\(model.totalDeletableCount)件）")
                     }
+                    .buttonStyle(PopButtonStyle(colors: model.moveToTrash
+                                                ? [Color.deepMagenta, Color.deepBlue]
+                                                : [Color.deepRose, Color.deepCoral]))
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(model.isBusy)
+                    .accessibilityIdentifier("button.delete")
                 }
             }
-            .padding(22)
         }
-        .frame(width: 500, height: 620)
+        .padding(22)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private var backgroundDog: some View {
         Image(systemName: "dog.fill")
             .resizable()
             .scaledToFit()
-            .frame(width: 250)
-            .foregroundStyle(.white.opacity(0.40))
-            .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
-            .blur(radius: 1)
+            .frame(width: 120)
+            .foregroundStyle(.white.opacity(0.18))
             .rotationEffect(.degrees(-4))
-            .offset(x: 130, y: 150)
+            .offset(x: 330, y: 10)
             .allowsHitTesting(false)
-    }
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Text("🧹")
-                .font(.system(size: 34))
-            Text("空フォルダ削除")
-                .font(.system(size: 26, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
-        }
+            .accessibilityHidden(true)
     }
 
     private var dropZone: some View {
-        RoundedRectangle(cornerRadius: 20)
-            .fill(.white.opacity(isTargeted ? 0.35 : 0.18))
+        RoundedRectangle(cornerRadius: 14)
+            .fill(isTargeted ? Color.accentColor.opacity(0.12) : Color(nsColor: .controlBackgroundColor))
             .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(style: StrokeStyle(lineWidth: 3, dash: [10, 6]))
-                    .foregroundStyle(.white.opacity(isTargeted ? 0.95 : 0.6))
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8, 5]))
+                    .foregroundStyle(isTargeted ? Color.accentColor : Color.secondary.opacity(0.45))
             )
-            .frame(height: 100)
+            .frame(height: 92)
             .overlay(
-                VStack(spacing: 4) {
-                    Text(isTargeted ? "📥" : "📂")
-                        .font(.system(size: 30))
+                VStack(spacing: 6) {
+                    // 絵文字はフォント次第で見た目が変わり、読み上げも濁るので
+                    // 機能を表す箇所は SF Symbols に置き換えている。
+                    Image(systemName: isTargeted ? "folder.fill.badge.plus" : "folder")
+                        .font(.system(size: 26))
+                        .foregroundStyle(isTargeted ? Color.accentColor : Color.secondary)
                     Text("ここにフォルダをドラッグ＆ドロップ")
                         .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                 }
+                .accessibilityHidden(true)
             )
-            .scaleEffect(isTargeted ? 1.03 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isTargeted)
+            .scaleEffect(isTargeted && !reduceMotion ? 1.02 : 1.0)
+            .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.6), value: isTargeted)
             .onDrop(of: [UTType.fileURL], isTargeted: $isTargeted, perform: handleDrop)
             // 処理中に対象を差し替えられると、画面の一覧と実際に消すものがずれる。
             .disabled(model.isBusy)
+            .accessibilityElement()
+            .accessibilityLabel("フォルダのドロップ先")
+            .accessibilityHint("ここにフォルダをドラッグ＆ドロップすると、中の空フォルダを探します")
     }
 
     private var folderRow: some View {
@@ -141,20 +176,22 @@ struct ContentView: View {
             Button {
                 model.chooseFolder()
             } label: {
-                Text("📁 フォルダを選択")
+                // 絵文字だと VoiceOver が「書類フォルダ、フォルダを選択」と読む。
+                Label("フォルダを選択", systemImage: "folder")
             }
-            .buttonStyle(PopButtonStyle(colors: [Color.popMagenta, Color.popBlue]))
+            .buttonStyle(PopButtonStyle(colors: [Color.deepMagenta, Color.deepBlue]))
             .disabled(model.isBusy)
 
             if let folder = model.targetFolder {
                 Text(folder.path)
                     .font(.system(.caption, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Capsule().fill(.white.opacity(0.15)))
+                    .background(Capsule().fill(Color(nsColor: .controlBackgroundColor)))
+                    .accessibilityLabel("対象のフォルダ \(folder.lastPathComponent)")
             }
 
             Spacer()
@@ -162,7 +199,7 @@ struct ContentView: View {
             if model.isBusy {
                 ProgressView()
                     .controlSize(.small)
-                    .tint(.white)
+                    .accessibilityLabel("処理中")
             }
         }
     }
@@ -206,7 +243,7 @@ struct ContentView: View {
         } label: {
             Image(systemName: "questionmark.circle.fill")
                 .font(.system(size: 14))
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Finderの設定ファイルについての説明")
@@ -239,7 +276,7 @@ struct ContentView: View {
     private func optionLabel(_ text: String) -> some View {
         Text(text)
             .font(.system(.caption, design: .rounded).weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
     }
 
     /// Folders first, then the loose `.DS_Store` files, both in scan order.
@@ -255,54 +292,60 @@ struct ContentView: View {
 
     private var resultsList: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 6) {
+            LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(deletableItems.enumerated()), id: \.element) { index, item in
                     HStack(spacing: 8) {
-                        Text(item.isFolder ? "📁" : "📄")
+                        Image(systemName: item.isFolder ? "folder" : "doc")
+                            .foregroundStyle(.secondary)
+                            .font(.caption)
                         Text(relativePath(item.url))
-                            .accessibilityIdentifier("row.\(relativePath(item.url))")
                             .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.primary)
                             .lineLimit(1)
                             .truncationMode(.middle)
                         Spacer()
                     }
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(rowColor(for: index).opacity(0.28))
-                    )
+                    .padding(.vertical, 6)
+                    // 交互の薄い縞。以前は行ごとに5色つけていたが、色に意味がなく
+                    // 「赤い行は危険？」と読ませてしまううえ、白文字が沈んでいた。
+                    .background(index.isMultiple(of: 2) ? Color.clear : Color.primary.opacity(0.04))
+                    // 行はVoiceOverでも1項目として読ませる。アイコンとパスが
+                    // 別々に読まれると、何件あるのか把握しづらい。
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(item.isFolder ? "フォルダ" : "ファイル") \(relativePath(item.url))")
+                    .accessibilityIdentifier("row.\(relativePath(item.url))")
                 }
             }
-            .padding(4)
         }
         .frame(minHeight: 150, maxHeight: 180)
-        .background(RoundedRectangle(cornerRadius: 16).fill(.black.opacity(0.12)))
-    }
-
-    private func rowColor(for index: Int) -> Color {
-        let palette: [Color] = [.popMint, .popYellow, .popPink, .popCyan, .popCoral]
-        return palette[index % palette.count]
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .controlBackgroundColor)))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.10)))
     }
 
     private var statusBadge: some View {
         Text(model.statusMessage)
             .accessibilityIdentifier("label.status")
             .font(.system(.callout, design: .rounded).weight(.semibold))
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(Capsule().fill(.white.opacity(0.18)))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(nsColor: .controlBackgroundColor))
+            )
     }
 
     /// Reassurance shown right after a delete removed `.DS_Store` files: Finder
     /// silently recreates one the moment it displays the folder again, which reads
     /// to a non-technical user as "the deletion didn't actually work".
     private var dsStoreReappearNote: some View {
-        Text("💡 このあとFinderでこのフォルダを開くと、.DS_Storeが自動的に作り直されることがあります。削除に失敗したわけではありません。")
-            .font(.system(.caption2, design: .rounded))
-            .foregroundStyle(.white.opacity(0.85))
+        Label("このあとFinderでこのフォルダを開くと、設定ファイルが自動的に作り直されることがあります。削除に失敗したわけではありません。",
+              systemImage: "lightbulb")
+            .font(.system(.caption, design: .rounded))
+            .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 4)
     }

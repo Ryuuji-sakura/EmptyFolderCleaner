@@ -22,6 +22,7 @@ final class EmptyFolderCleanerUITests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
+        restoreSafeDefaultsIfNeeded()
         terminateApp()
         if let root { try? FileManager.default.removeItem(at: root) }
         root = nil
@@ -71,6 +72,16 @@ final class EmptyFolderCleanerUITests: XCTestCase {
             if FileManager.default.fileExists(atPath: candidate.path) { return candidate }
         }
         throw XCTSkip("ビルド済みの EmptyFolderCleaner.app が見つかりません")
+    }
+
+    /// テストが途中で失敗しても、開発マシンのアプリが「完全削除」の設定のまま残らないようにする。
+    /// アプリが生きているうちにUIから戻すのが、サンドボックス内のランナーにできる唯一の方法
+    /// （ランナーからは他アプリの UserDefaults に書き込めない）。
+    private func restoreSafeDefaultsIfNeeded() {
+        guard !NSRunningApplication.runningApplications(withBundleIdentifier: Self.bundleID).isEmpty else { return }
+        let box = XCUIApplication(bundleIdentifier: Self.bundleID).checkBoxes["toggle.moveToTrash"]
+        guard box.exists, ((box.value as? Int) ?? 1) == 0 else { return }
+        box.click()
     }
 
     /// Always `forceTerminate`: `terminate()` only sends a Quit event, which a test
@@ -140,6 +151,10 @@ final class EmptyFolderCleanerUITests: XCTestCase {
             """, file: file, line: line)
     }
 
+    private func row(_ app: XCUIApplication, _ relativePath: String) -> XCUIElement {
+        app.descendants(matching: .any)["row.\(relativePath)"]
+    }
+
     private func confirmationDialog(of app: XCUIApplication) throws -> XCUIElement {
         // ボタン名だけで引くとメインウィンドウ側とも一致しうるので、ダイアログに絞る。
         let dialog = app.dialogs.firstMatch
@@ -173,8 +188,9 @@ final class EmptyFolderCleanerUITests: XCTestCase {
         setToggle(app, "toggle.allDSStoreFiles", to: false)
 
         waitForStatus(app, contains: "1 件の空フォルダ")
-        XCTAssertTrue(app.staticTexts["row.消してよい"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["row.消さないで"].exists, "実ファイルを持つフォルダが一覧に出ています")
+        // 行はVoiceOver向けに1要素へまとめてあるので、種別を限定せずに識別子で引く。
+        XCTAssertTrue(row(app, "消してよい").waitForExistence(timeout: 10))
+        XCTAssertFalse(row(app, "消さないで").exists, "実ファイルを持つフォルダが一覧に出ています")
     }
 
     func testTurningOffTheAllDSStoreOptionRescansAndDropsThoseRows() throws {
@@ -218,6 +234,10 @@ final class EmptyFolderCleanerUITests: XCTestCase {
         waitForStatus(app, contains: "完全に削除しました")
         XCTAssertFalse(exists("掃除対象"), "空フォルダが残っています")
         XCTAssertTrue(exists("残すもの/実ファイル.txt"), "実ファイルまで消えています")
+
+        // 設定はアプリと同じバンドルIDの UserDefaults に残るので、戻さないと
+        // 開発マシンのアプリが「完全削除」のまま使われることになる。
+        setToggle(app, "toggle.moveToTrash", to: true)
     }
 
     func testCancellingTheConfirmationDeletesNothing() throws {
