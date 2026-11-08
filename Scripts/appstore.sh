@@ -39,6 +39,8 @@ xcodegen generate
 step "文言カタログを検査"
 # 英語の画面に日本語が混ざる不具合は、ビルドでもテストでも気づけない（訳の無いキーは
 # エラーにならず、日本語のまま表示される）。出荷前に機械的に確かめる。
+# 検査そのものが壊れていないことも先に確かめる（見逃す検査は、検査が無いより悪い）。
+"$ROOT/Scripts/check-localization.py" --self-test
 "$ROOT/Scripts/check-localization.py"
 
 step "テストを実行"

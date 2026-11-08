@@ -474,7 +474,7 @@ struct ContentView: View {
     /// サンドボックスの中では `NSHomeDirectory()` がアプリのコンテナを指すので、
     /// `abbreviatingWithTildeInPath` は本物のホームを縮めてくれない。実ユーザーの
     /// ホームは passwd から取る。`/Users/名前/` の繰り返しが消えて、肝心の末尾が読める。
-    private static let realHome: String = {
+    private static let realHome: String = {  // l10n-ignore: 実ユーザーのホームのパス。表示用のデータで、翻訳しない
         if let dir = getpwuid(getuid())?.pointee.pw_dir { return String(cString: dir) }
         return NSHomeDirectory()
     }()
