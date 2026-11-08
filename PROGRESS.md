@@ -1074,6 +1074,21 @@ fixture が要り、作成に約77秒かかる）。文言そのものは `Sweep
 Codex の検査は計7回。1〜4回目は静的検査の見逃し、5〜6回目は英語UIテスト自体の穴
 （6回目は P1 が2件）、7回目は P1 なし。毎回、指摘は再現を確かめてから直した。
 
+### 見つけた不具合: 日本語UIテストが開発機の設定を書き換えていた
+
+最終のビルドのあと、`defaults read` で `deleteAllDSStoreFiles=1` になっているのに気づいた
+（テストの前は `0`）。**既存の日本語UIテストが「Finderの設定ファイルをすべて削除」をオンに
+して終わっていた。** 後始末（`restoreSafeDefaultsIfNeeded`）が `moveToTrash` しか戻して
+いなかったため。同じバンドルIDなので `/Applications` の実際のアプリにも効く。
+`moveToTrash` で2回起きたのと同じ種類の問題を、別の設定で見落としていた。
+
+後始末を3つ（`moveToTrash` オン / `allDSStoreFiles` オフ / `dsStoreOnlyFolders` オン）に広げた。
+日本語UIテストを流したあと、`deleteAllDSStoreFiles=0` / `moveToTrash=1` のままであることを確かめた。
+開発機の値も `0` に戻した。
+
+**テストを流したあとは、`moveToTrash` だけでなく `deleteAllDSStoreFiles` も `defaults read`
+で確認すること。**
+
 ### UIテストは日本語の環境が前提
 
 画面の日本語を照合しているので、優先言語が日本語でない Mac で流すとアプリが英語で立ち上がり、

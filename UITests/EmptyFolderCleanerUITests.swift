@@ -92,9 +92,17 @@ final class EmptyFolderCleanerUITests: XCTestCase {
     /// （ランナーからは他アプリの UserDefaults に書き込めない）。
     private func restoreSafeDefaultsIfNeeded() {
         guard !NSRunningApplication.runningApplications(withBundleIdentifier: Self.bundleID).isEmpty else { return }
-        let box = XCUIApplication(bundleIdentifier: Self.bundleID).checkBoxes["toggle.moveToTrash"]
-        guard box.exists, ((box.value as? Int) ?? 1) == 0 else { return }
-        box.click()
+        let app = XCUIApplication(bundleIdentifier: Self.bundleID)
+        app.typeKey(.escape, modifierFlags: [])   // 開いたままのダイアログがあると、チェックボックスに触れない
+        usleep(300_000)
+        // **3つとも戻す。** 以前は moveToTrash だけだったので、「Finderの設定ファイルをすべて削除」が
+        // オンのまま残り、`/Applications` の実際のアプリ（同じバンドルID）にまで効いていた。
+        // 順序に意味がある。「すべて削除」がオンの間は「設定ファイルだけ」が無効になる。
+        for (identifier, wanted) in [("toggle.moveToTrash", true), ("toggle.allDSStoreFiles", false), ("toggle.dsStoreOnlyFolders", true)] {
+            let box = app.checkBoxes[identifier]
+            guard box.exists, box.isEnabled else { continue }
+            if (((box.value as? Int) ?? 0) == 1) != wanted { box.click() }
+        }
     }
 
     /// Always `forceTerminate`: `terminate()` only sends a Quit event, which a test
