@@ -27,13 +27,19 @@ SwiftUI の `Text("...")` は、リテラルをそのまま翻訳のキーとし
 
 既知の限界
 ----------
-これは Swift の構文解析器ではなく、このアプリの数ファイルを守るための簡易な静的検査。
-次のような書き方は読めないので、使うときはこの検査を信用せず、英語で起動して目で確かめること。
+これは Swift の構文解析器ではなく、このアプリの数ファイルを守るための簡易な静的検査で、
+**本当の保証ではない**。早く気づくための保険として使う。次のような書き方は読めない。
 
 - 生文字列リテラル（`#"..."#`）、マクロ、`#if` による宣言の出し分け
 - `String` の型エイリアス（`typealias Label = String`）や、プロパティラッパー経由の String
 - 型を推論させた `String`（`let title = someString` を `Text(title)` に渡す、など）
+- 1つの `let` / `var` での複数宣言（`let count: Int, title: String`）
 - 画面を作るファイル以外（`VIEW_FILES`）で String を受ける関数
+
+**本当の保証は UITests/EnglishScreenTests.swift。** アプリを英語で実際に起動して、
+画面・説明の吹き出し・確認ダイアログ・メニュー・使いかたの窓に出ている文字列に、日本語が
+1文字も無いことを確かめる。コードの書き方に依存しないので、上の限界を全部すり抜けられる。
+`typealias` で String を隠した変異は、この静的検査は見逃したが、英語UIテストは捕まえた。
 """
 import glob
 import json
@@ -158,9 +164,10 @@ STRING_PROPERTY = re.compile(
 )
 
 
-def blank_comments_and_strings(source: str) -> str:
+def blank_comments_and_strings(source: str, keep_strings: bool = False) -> str:
     """
     コメントと文字列リテラルの中身を空白に置き換える（改行と文字数は保つので、行番号は変わらない）。
+    `keep_strings=True` なら、コメントだけを空白にして文字列は残す（画面のリテラルを拾う用）。
 
     宣言の走査は括弧の対応を追うため、文字列やコメントの中の `)` や、コメントアウトされた
     宣言に惑わされてはいけない。補間（`\\( ... )`）の中の入れ子の文字列も読み飛ばす。
@@ -173,12 +180,28 @@ def blank_comments_and_strings(source: str) -> str:
             if out[k] != "\n":
                 out[k] = " "
 
+    def skip_block_comment(i: int) -> int:
+        depth, j = 1, i + 2
+        while j < n and depth:
+            if source.startswith("/*", j):
+                depth += 1
+                j += 2
+            elif source.startswith("*/", j):
+                depth -= 1
+                j += 2
+            else:
+                j += 1
+        return j
+
     def skip_interpolation(j: int) -> int:
         depth = 1
         while j < n and depth:
             c = source[j]
             if c == '"':
                 j = skip_string(j)
+                continue
+            if source.startswith("/*", j):  # 補間の中のコメントの括弧を数えない
+                j = skip_block_comment(j)
                 continue
             depth += c == "("
             depth -= c == ")"
@@ -209,21 +232,13 @@ def blank_comments_and_strings(source: str) -> str:
             blank(i, j)
             i = j
         elif source.startswith("/*", i):
-            depth, j = 1, i + 2
-            while j < n and depth:
-                if source.startswith("/*", j):
-                    depth += 1
-                    j += 2
-                elif source.startswith("*/", j):
-                    depth -= 1
-                    j += 2
-                else:
-                    j += 1
+            j = skip_block_comment(i)
             blank(i, j)
             i = j
         elif source[i] == '"':
             j = skip_string(i)
-            blank(i, j)
+            if not keep_strings:
+                blank(i, j)
             i = j
         else:
             i += 1
@@ -231,12 +246,18 @@ def blank_comments_and_strings(source: str) -> str:
 
 
 def split_top_level(text: str):
-    """括弧・角括弧・山括弧の外側のカンマで分ける。`->` の `>` は閉じ括弧ではない。"""
+    """
+    丸括弧・角括弧の外側のカンマで分ける。
+
+    山括弧は数えない。`1 < 2` の比較や `->` の `>` と、ジェネリクスの `<` `>` を字面では
+    区別できないため。数えなくても害は小さい（`Dictionary<String, Int>` が2つに割れても、
+    割れた断片には `名前: 型` の形が無いので String 引数とは判定されない）。
+    """
     parts, depth, current = [], 0, []
-    for index, char in enumerate(text):
-        if char in "([<":
+    for char in text:
+        if char in "([":
             depth += 1
-        elif char in ")]" or (char == ">" and text[index - 1:index] != "-"):
+        elif char in ")]":
             depth -= 1
         if char == "," and depth == 0:
             parts.append("".join(current))
@@ -286,17 +307,18 @@ def string_parameters(path: str):
 
 # ---------------------------------------------------------------- 画面のリテラル
 
-def literals(path: str):
-    for number, line in enumerate(open(path, encoding="utf-8"), 1):
-        stripped = line.strip()
-        if stripped.startswith(("//", "///", "*", "/*")):
-            continue
-        code = re.sub(r"\s//.*$", "", line)
-        for match in LITERAL.finditer(code):
+def find_literals(source: str):
+    """画面のリテラル（日本語を含む文字列）を (行番号, 正規化したキー) で返す。コメントの中は除く。"""
+    code = blank_comments_and_strings(source, keep_strings=True)
+    for number, line in enumerate(code.split("\n"), 1):
+        for match in LITERAL.finditer(line):
             body = match.group(1)
-            if not JP.search(body):
-                continue
-            yield number, normalize(INTERP.sub("%@", body))
+            if JP.search(body):
+                yield number, normalize(INTERP.sub("%@", body))
+
+
+def literals(path: str):
+    return find_literals(open(path, encoding="utf-8").read())
 
 
 def run() -> int:
@@ -411,7 +433,21 @@ def self_test() -> int:
     expect("属性つきプロパティ", declarations("struct V: View {\n    @State private var name: String = \"\"\n}"))
     expect("ジェネリクスの山括弧", declarations("func a<T: Hashable>(_ items: [T], _ title: String) {}"))
     expect("補間の中の入れ子の文字列で崩れない", declarations('let x = "\\(f("a)b"))"\nfunc a(_ title: String) {}'))
+    expect("既定値に比較演算子 < がある", declarations("func a(\n    _ enabled: Bool = 1 < 2,\n    _ title: String\n) { Text(title) }"))
+    expect("補間の中のコメントの ( で崩れない", declarations('let x = "\\(value /* ( */)"\nfunc a(_ title: String) { Text(title) }'))
     expect("l10n-ignore は複数行宣言でも効く", not declarations("func a(\n    _ title: String // l10n-ignore: データ\n) {}"))
+
+    # --- 画面のリテラル
+    def keys(source):
+        return [key for _, key in find_literals(source)]
+
+    expect("ブロックコメント内の Text は拾わない（コメントアウトで出荷が止まらない）",
+           not keys('/*\n    Text("未使用の説明")\n*/'))
+    expect("行コメント内の日本語は拾わない", not keys('let a = 1 // Text("未使用")'))
+    expect("画面のリテラルは拾う", keys('Text("すべて選択")') == ["すべて選択"])
+    expect("文字列の中の // をコメントと誤認しない", keys('Text("http://例.jp")') == ["http://例.jp"])
+    expect("補間は %@ に正規化する", keys('Text("\\(n) 件中 \\(m) 件")') == ["%? 件中 %? 件"])
+    expect("日本語の無い文字列は無視", not keys('let id = "button.delete"'))
 
     for label in failures:
         print(f"自己検査に失敗: {label}", file=sys.stderr)

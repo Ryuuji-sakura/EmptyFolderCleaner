@@ -105,7 +105,7 @@ xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
   -configuration Release -derivedDataPath build build
 ```
 
-テスト（ユニット45件 + UI 10件）:
+テスト（ユニット45件 + UI 11件）:
 
 ```sh
 xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
@@ -118,7 +118,8 @@ AppKit にも main actor にも依存していないため、実ファイルシ�
 `UITests/` は実際のアプリを起動して操作する E2E テストです。LaunchServices 経由で
 フォルダを開くことで、サンドボックスの許可が付いた本番同様の状態を作っています。
 画面の日本語を照合するので、優先言語が日本語の Mac で実行してください（それ以外の環境では
-自動的に飛ばされます）。
+自動的に飛ばされます）。`EnglishScreenTests` だけは、英語で起動して画面に日本語が残って
+いないことを確かめるテストで、環境の言語に関係なく動きます。
 
 ### 文言（日本語・英語）
 

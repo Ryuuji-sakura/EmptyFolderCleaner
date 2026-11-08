@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		021F8D628A5AF0F41BA6F21F /* EmptyFolderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA6CC1C467D9BCD8E086BE84 /* EmptyFolderModel.swift */; };
 		237D100FA415F492D6947883 /* FolderSweeperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F389067349E11F75B9C38AE0 /* FolderSweeperTests.swift */; };
+		2D3D8FAD7E188A5B42B39BAB /* EnglishScreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C754B7A396E44828ABFC0960 /* EnglishScreenTests.swift */; };
 		2F427754E1F943EB7B6F40DF /* SweepMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E7463030BFF58C52A6A8A32 /* SweepMessages.swift */; };
 		3975DC01C11A2F91028F3A26 /* EmptyFolderCleanerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F009C93E6C442A115753EB2 /* EmptyFolderCleanerApp.swift */; };
 		40590E60ECBBBDAF92354CC9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6714878F4BE7D498A1B9DB42 /* ContentView.swift */; };
@@ -49,6 +50,7 @@
 		5760A7D65A0DB957442F51B8 /* SweepMessagesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepMessagesTests.swift; sourceTree = "<group>"; };
 		5B705CA646A19BD2D616D2CC /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		6714878F4BE7D498A1B9DB42 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		C754B7A396E44828ABFC0960 /* EnglishScreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnglishScreenTests.swift; sourceTree = "<group>"; };
 		C7BC7972493AD5A336BD057B /* EmptyFolderCleanerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyFolderCleanerUITests.swift; sourceTree = "<group>"; };
 		DA6CC1C467D9BCD8E086BE84 /* EmptyFolderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyFolderModel.swift; sourceTree = "<group>"; };
 		EFF07EF7E36A3F0B22A25378 /* EmptyFolderCleanerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EmptyFolderCleanerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -96,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				C7BC7972493AD5A336BD057B /* EmptyFolderCleanerUITests.swift */,
+				C754B7A396E44828ABFC0960 /* EnglishScreenTests.swift */,
 			);
 			path = UITests;
 			sourceTree = "<group>";
@@ -264,6 +267,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				60EA2BC961280EAA4C178CD7 /* EmptyFolderCleanerUITests.swift in Sources */,
+				2D3D8FAD7E188A5B42B39BAB /* EnglishScreenTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
