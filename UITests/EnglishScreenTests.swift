@@ -30,10 +30,15 @@ import XCTest
 /// 取りこぼされて別の場所が選ばれる可能性はゼロではないので、**削除の前に、アプリが
 /// 保持している対象が fixture であることを確かめる**（フォルダ名に付いた UUID で照合する）。
 ///
-/// ## 見えないもの
-/// `.accessibilityHidden(true)` の内側の文字（ドロップ領域の説明文など）はアクセシビリティの
-/// 木に出てこないので、このテストでは調べられない。そこはリテラルとカタログの突き合わせ
-/// （check-localization.py）だけで守られている。
+/// ## 見えないもの（既知の限界）
+/// 次の3つは、このテストでは調べられない。いずれも、文言そのものは別の手段で守られている。
+///
+/// - `.accessibilityHidden(true)` の内側の文字（ドロップ領域の説明文など）: アクセシビリティの
+///   木に出てこない。リテラルとカタログの突き合わせ（check-localization.py）だけで守られている。
+/// - ホバーで出るツールチップ（`.help(…)`）: ホバーしないと画面に出ない。同じく静的検査で守られる。
+/// - 処理中・中止後の表示（「Scanning…」「Stopping…」「Scan stopped」と、進捗の読み上げ、Stop ボタン）:
+///   捕まえるには数万フォルダの fixture（作成に約77秒）が要り、スイートが重くなりすぎる。
+///   組み立てる文は `SweepMessagesTests` が英語で全件検証していて、ボタンやラベルは静的検査で守られる。
 final class EnglishScreenTests: XCTestCase {
     private static let bundleID = "com.ryuujisakura.emptyfoldercleaner"
     private static let english = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
