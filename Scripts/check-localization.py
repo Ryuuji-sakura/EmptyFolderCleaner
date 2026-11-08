@@ -51,7 +51,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CATALOG = os.path.join(ROOT, "EmptyFolderCleaner", "Localizable.xcstrings")
 
 # 3000-303F は「、」「。」などの記号。ここを含めないと「、」だけのキーを見落とす。
-JP = re.compile("[　-ヿ一-鿿＀-￯]")
+# 漢字は拡張A（3400-4DBF）・互換漢字（F900-FAFF）・拡張B以降（20000-2FA1F）も含める。
+JP = re.compile("[\u3000-\u30FF\u31F0-\u31FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF\U00020000-\U0002FA1F]")
 LITERAL = re.compile(r'"((?:[^"\\]|\\.)*)"')
 INTERP = re.compile(r"\\\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)")  # 括弧は2段まで
 SPEC = re.compile(r"%(?:\d+\$)?(?:lld|ld|d|@)")

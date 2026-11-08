@@ -7,8 +7,9 @@ import XCTest
 /// （Scripts/check-localization.py）は、コードの書き方の組み合わせが無限にあるので、
 /// 見逃しをゼロにはできない。こちらは書き方に依存せず、**実際に出た画面**を見る。
 ///
-/// 起動は `XCUIApplication.launchArguments` で `-AppleLanguages (en)` を渡す。
-/// フォルダは「Choose Folder」のパネルをUI操作で選ぶ（利用者が実際に通る経路）。
+/// ## 起動
+/// `XCUIApplication.launchArguments` で言語と設定を渡す。フォルダは「Choose Folder」のパネルを
+/// UI操作で選ぶ（利用者が実際に通る経路）。
 ///
 /// フォルダを `NSWorkspace` や `open` コマンドで渡す手は使えない。`XCUIApplication` が起動した
 /// プロセスは LaunchServices の通常の管理下に無く、あとから渡した合図が届かない（実行中の
@@ -16,18 +17,27 @@ import XCTest
 /// 逆に、サンドボックス内のテストから LaunchServices 経由で起動すると、言語の指定
 /// （`--args`）が落とされて日本語で起動する。
 ///
-/// フォルダ名は英数字だけにしてあり、日本語が出ればそれはアプリの文言。
+/// ## 設定は**起動引数で固定し、UIでは切り替えない**
+/// 完全削除まで動かすので、「ゴミ箱に入れる」「すべて削除」を切り替える必要がある。ところが
+/// UIで切り替えると即座に UserDefaults へ保存されるため、テストが途中で落ちたりアプリが
+/// クラッシュしたりすると、危険な設定（完全削除）が開発機のアプリに残ってしまう（過去に2回起きた）。
+/// UI経由の後始末は、アプリが応答しなければ効かない。
+/// 起動引数（`-moveToTrash NO`）による値は**保存されない**ので、何が起きても何も残らない。
+/// そのため、ゴミ箱モードと完全削除モードは**別の起動**（別のテスト）に分けてある。
 ///
-/// **見えないもの。** `.accessibilityHidden(true)` の内側の文字（ドロップ領域の説明文など）は
-/// アクセシビリティの木に出てこないので、このテストでは調べられない。そこはリテラルと
-/// カタログの突き合わせ（check-localization.py）だけで守られている。
+/// ## 削除の安全
+/// 完全削除は、テストが作った一時フォルダの中だけで行う。ただし、パネルに打ち込んだパスが
+/// 取りこぼされて別の場所が選ばれる可能性はゼロではないので、**削除の前に、アプリが
+/// 保持している対象が fixture であることを確かめる**（フォルダ名に付いた UUID で照合する）。
 ///
-/// **設定を必ず戻す。** このテストは「ゴミ箱に入れる」と「Finderの設定ファイルをすべて削除」を
-/// 切り替えて完全削除まで動かす。設定はアプリと同じ UserDefaults に残るので、失敗しても
-/// `tearDown` で UI から既定に戻す（戻し忘れると、開発機のアプリが「完全削除」のまま
-/// 使われる。過去に2回起きた）。削除の対象は、このテストが作った一時フォルダだけ。
+/// ## 見えないもの
+/// `.accessibilityHidden(true)` の内側の文字（ドロップ領域の説明文など）はアクセシビリティの
+/// 木に出てこないので、このテストでは調べられない。そこはリテラルとカタログの突き合わせ
+/// （check-localization.py）だけで守られている。
 final class EnglishScreenTests: XCTestCase {
     private static let bundleID = "com.ryuujisakura.emptyfoldercleaner"
+    private static let english = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+
     private var root: URL!
     private var app: XCUIApplication!
 
@@ -52,7 +62,6 @@ final class EnglishScreenTests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
-        restoreSafeDefaults()
         app?.terminate()
         terminateRunningApp()
         if let root { try? FileManager.default.removeItem(at: root) }
@@ -61,7 +70,6 @@ final class EnglishScreenTests: XCTestCase {
 
     // MARK: - 補助
 
-    /// 削除まで動かすので、対象が一時フォルダの中であることを先に確かめる。
     private func assertUnderTemporaryDirectory(_ url: URL, file: StaticString = #filePath, line: UInt = #line) {
         let temp = URL(fileURLWithPath: NSTemporaryDirectory()).resolvingSymlinksInPath().path
         XCTAssertTrue(url.resolvingSymlinksInPath().path.hasPrefix(temp),
@@ -78,35 +86,21 @@ final class EnglishScreenTests: XCTestCase {
         }
     }
 
-    /// 開いたままのダイアログを閉じてから、3つの設定を既定（ゴミ箱=オン、すべて削除=オフ、
-    /// 設定ファイルだけのフォルダ=オン）に戻す。アプリが生きているうちにUIから戻すのが、
-    /// サンドボックス内のランナーにできる唯一の方法。
-    private func restoreSafeDefaults() {
-        guard let app,
-              !NSRunningApplication.runningApplications(withBundleIdentifier: Self.bundleID).isEmpty
-        else { return }
-        app.typeKey(.escape, modifierFlags: [])
-        usleep(300_000)
-        // 順序に意味がある。「すべて削除」がオンの間は「設定ファイルだけ」が無効になる。
-        for (identifier, wanted) in [("toggle.moveToTrash", true), ("toggle.allDSStoreFiles", false), ("toggle.dsStoreOnlyFolders", true)] {
-            let box = app.checkBoxes[identifier]
-            guard box.exists, box.isEnabled else { continue }
-            if (((box.value as? Int) ?? 0) == 1) != wanted { box.click() }
-        }
+    /// 英語で起動する。`settings` は UserDefaults の値を起動引数で固定するもの（保存されない）。
+    private func launch(settings: [String: String]) {
+        app = XCUIApplication()
+        app.launchArguments = Self.english + settings.sorted { $0.key < $1.key }.flatMap { ["-\($0.key)", $0.value] }
+        app.launch()
     }
 
-    private func setToggle(_ identifier: String, to wanted: Bool, file: StaticString = #filePath, line: UInt = #line) {
-        let box = app.checkBoxes[identifier]
-        XCTAssertTrue(box.waitForExistence(timeout: 10), "チェックボックス \(identifier) が見つかりません", file: file, line: line)
-        if (((box.value as? Int) ?? 0) == 1) != wanted { box.click() }
-    }
-
+    /// 日本語（かな・カナ・漢字・全角形）が1文字でもあるか。漢字は `isIdeographic` で見るので、
+    /// 拡張A・拡張B以降・互換漢字も拾える（`4E00...9FFF` だけでは「㐂」「𠮷」「﨑」を逃す）。
     private func containsJapanese(_ text: String) -> Bool {
         text.unicodeScalars.contains {
-            (0x3000...0x30FF).contains($0.value)     // 記号・ひらがな・カタカナ
-                || (0x31F0...0x31FF).contains($0.value)  // カタカナ拡張
-                || (0x4E00...0x9FFF).contains($0.value)  // 漢字
-                || (0xFF00...0xFFEF).contains($0.value)  // 全角・半角形
+            $0.properties.isIdeographic
+                || (0x3000...0x30FF).contains($0.value)      // 記号・ひらがな・カタカナ
+                || (0x31F0...0x31FF).contains($0.value)      // カタカナ拡張
+                || (0xFF00...0xFFEF).contains($0.value)      // 全角・半角形
         }
     }
 
@@ -154,26 +148,8 @@ final class EnglishScreenTests: XCTestCase {
         XCTFail("状態表示が『\(text)』になりません。実際: 「\(seen)」", file: file, line: line)
     }
 
-    // MARK: - テスト
-
-    func testNoJapaneseAppearsAnywhereWhenLaunchedInEnglish() throws {
-        app = XCUIApplication()
-        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launch()
-        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 30), "ウィンドウが表示されません")
-        XCTAssertTrue(app.buttons["Choose Folder"].waitForExistence(timeout: 10), "英語で起動していません（Choose Folder が見つかりません）")
-
-        // --- 保存済みの設定に左右されないよう、先に既定へ揃える（件数が変わるため）
-        setToggle("toggle.moveToTrash", to: true)
-        setToggle("toggle.allDSStoreFiles", to: false)
-        setToggle("toggle.dsStoreOnlyFolders", to: true)
-
-        // --- フォルダを選ぶ前の画面（初期の説明文。フォルダを選ぶと上書きされるので、先に見る）
-        let idle = try strings(in: app.windows)
-        XCTAssertTrue(idle.contains { $0.contains("Looks for empty folders") }, "初期の説明文が英語になっていません: \(idle)")
-        assertNoJapanese(idle, on: "フォルダを選ぶ前の画面")
-
-        // --- フォルダは「Choose Folder」のパネルから選ぶ
+    /// フォルダは「Choose Folder」のパネルから選ぶ。
+    private func chooseFixtureFolderViaPanel() {
         app.buttons["Choose Folder"].click()
         usleep(1_500_000)
         app.typeKey("g", modifierFlags: [.command, .shift])   // 「フォルダへ移動」
@@ -186,10 +162,45 @@ final class EnglishScreenTests: XCTestCase {
         let choose = app.buttons["Choose"].firstMatch
         XCTAssertTrue(choose.waitForExistence(timeout: 10), "パネルの『Choose』が見つかりません")
         choose.click()
+    }
 
+    /// **削除の前に必ず呼ぶ。** アプリが保持している対象が、このテストの fixture であることを確かめる。
+    /// 打ち込んだパスの取りこぼしなどで別のフォルダが選ばれていたら、ここで止める。
+    /// 件数（6件など）の一致だけでは足りない。別のフォルダにたまたま同じ件数があり得るため。
+    /// 照合には、フォルダ名に付けた UUID を使う（読み上げ用ラベルに「Target folder 〈名前〉」と出る）。
+    private func assertTargetIsFixture(file: StaticString = #filePath, line: UInt = #line) {
+        let expected = "Target folder \(root.lastPathComponent)"
+        // `label == ...` のライブ検索では見つからなかった（読み上げ用ラベルの載り方が要素の
+        // 種類によって違う）ので、ほかの検査と同じスナップショットの文字列で照合する。
+        let deadline = Date().addingTimeInterval(10)
+        var seen: [String] = []
+        while Date() < deadline {
+            seen = (try? strings(in: app.windows)) ?? []
+            if seen.contains(expected) { return }
+            usleep(300_000)
+        }
+        XCTFail("対象が fixture ではありません（『\(expected)』が見つかりません）。削除を中止します。"
+                + " 実際の『Target folder』: \(seen.filter { $0.hasPrefix("Target folder") })", file: file, line: line)
+    }
+
+    // MARK: - テスト
+
+    /// ゴミ箱モード（既定）。削除は実行しない。
+    func testNoJapaneseAppearsAnywhereInTrashMode() throws {
+        launch(settings: ["moveToTrash": "YES", "deleteAllDSStoreFiles": "NO", "includeDSStoreOnlyFolders": "YES"])
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 30), "ウィンドウが表示されません")
+        XCTAssertTrue(app.buttons["Choose Folder"].waitForExistence(timeout: 10), "英語で起動していません（Choose Folder が見つかりません）")
+
+        // --- フォルダを選ぶ前の画面（初期の説明文。フォルダを選ぶと上書きされるので、先に見る）
+        let idle = try strings(in: app.windows)
+        XCTAssertTrue(idle.contains { $0.contains("Looks for empty folders") }, "初期の説明文が英語になっていません: \(idle)")
+        assertNoJapanese(idle, on: "フォルダを選ぶ前の画面")
+
+        chooseFixtureFolderViaPanel()
         // Photos, Photos/2023, Photos/2023/Trip, Photos/2024, Photos/2024/Drafts, Music の6件
         // （Documents は実ファイルがあるので対象外）
         waitForStatus(containing: "Found 6 empty folders.")
+        assertTargetIsFixture()
         let scanned = try strings(in: app.windows)
         assertNoJapanese(scanned, on: "スキャン結果の画面")
         XCTAssertTrue(scanned.contains { $0.contains("selected") }, "選択件数の英語が出ていません: \(scanned)")
@@ -207,9 +218,9 @@ final class EnglishScreenTests: XCTestCase {
 
         // --- 確認ダイアログ（ゴミ箱モード）。実行はせず Escape で閉じる。
         app.buttons["button.delete"].click()
-        var dialog = app.dialogs.firstMatch
+        let dialog = app.dialogs.firstMatch
         XCTAssertTrue(dialog.waitForExistence(timeout: 10), "確認ダイアログが出ません")
-        var dialogStrings = try strings(in: dialog)
+        let dialogStrings = try strings(in: dialog)
         XCTAssertTrue(dialog.buttons["Cancel"].exists && dialog.buttons["Move to Trash"].exists,
                       "ゴミ箱モードのダイアログのボタンが英語になっていません: \(dialogStrings)")
         assertNoJapanese(dialogStrings, on: "確認ダイアログ（ゴミ箱）")
@@ -217,41 +228,6 @@ final class EnglishScreenTests: XCTestCase {
         usleep(500_000)
         XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("Photos/2023/Trip").path),
                       "Escape で閉じたのに削除されています")
-
-        // --- 「Finderの設定ファイルをすべて削除」をオン → 単独の .DS_Store が一覧に加わる
-        setToggle("toggle.allDSStoreFiles", to: true)
-        waitForStatus(containing: "Found 6 empty folders and 1 .DS_Store file.")
-        assertNoJapanese(try strings(in: app.windows), on: "設定ファイルも対象にした画面")
-
-        // --- 完全削除モード: ボタンとダイアログの文言
-        setToggle("toggle.moveToTrash", to: false)
-        let permanentButton = app.buttons["button.delete"]
-        XCTAssertTrue(permanentButton.waitForExistence(timeout: 10))
-        XCTAssertTrue(permanentButton.label.contains("Delete Permanently"),
-                      "完全削除モードのボタンが英語になっていません: 「\(permanentButton.label)」")
-        assertNoJapanese(try strings(in: app.windows), on: "完全削除モードの画面")
-
-        permanentButton.click()
-        dialog = app.dialogs.firstMatch
-        XCTAssertTrue(dialog.waitForExistence(timeout: 10), "完全削除の確認ダイアログが出ません")
-        dialogStrings = try strings(in: dialog)
-        XCTAssertTrue(dialog.buttons["Delete Permanently"].exists && dialog.buttons["Cancel"].exists,
-                      "完全削除のダイアログのボタンが英語になっていません: \(dialogStrings)")
-        assertNoJapanese(dialogStrings, on: "確認ダイアログ（完全削除）")
-
-        // --- 実際に削除する（一時フォルダの中だけ）。削除後にだけ出る表示を見るため。
-        dialog.buttons["Delete Permanently"].click()
-        waitForStatus(containing: "Permanently deleted")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("Photos").path), "空フォルダが削除されていません")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("Documents/Report.txt").path), "実ファイルまで消えています")
-        let afterDelete = try strings(in: app.windows)
-        XCTAssertTrue(afterDelete.contains { $0.contains("recreated automatically") },
-                      "削除後だけ出る注意書きが英語で出ていません: \(afterDelete)")
-        assertNoJapanese(afterDelete, on: "削除後の画面")
-
-        // --- 設定を戻す（失敗した場合は tearDown でも戻す）
-        setToggle("toggle.moveToTrash", to: true)
-        setToggle("toggle.allDSStoreFiles", to: false)
 
         // --- メニューバー（Apple メニューは macOS の領域なので除く）
         let menuBar = app.menuBars
@@ -263,10 +239,15 @@ final class EnglishScreenTests: XCTestCase {
             let barItem = menuBar.menuBarItems[title]
             barItem.click()
             usleep(300_000)
-            let items = try strings(in: barItem)
-            // 見出しだけで通らないよう、メニューの中身（項目）が取れたことを確かめる。
-            XCTAssertGreaterThan(items.count, 1, "『\(title)』メニューの項目を取得できません: \(items)")
-            menuStrings += items
+            // 見出しだけで通らないよう、子の項目が実際に取れたことを直接確かめる。
+            // （label と title が同じ見出しを二重に数えるので、文字列の件数では判断できない）
+            XCTAssertGreaterThan(barItem.menuItems.count, 0, "『\(title)』メニューの項目を取得できません")
+            menuStrings += try strings(in: barItem)
+            if title == "Folder" {
+                for expected in ["Choose Folder…", "Scan Again", "Stop"] {
+                    XCTAssertTrue(barItem.menuItems[expected].exists, "『Folder』メニューに『\(expected)』がありません")
+                }
+            }
             app.typeKey(.escape, modifierFlags: [])
             usleep(200_000)
         }
@@ -283,5 +264,48 @@ final class EnglishScreenTests: XCTestCase {
         let helpStrings = try strings(in: helpWindow)
         XCTAssertGreaterThan(helpStrings.count, 5, "使いかたの文言を取得できません")
         assertNoJapanese(helpStrings, on: "使いかたの窓")
+    }
+
+    /// 完全削除モード + 「Finderの設定ファイルをすべて削除」。**実際に削除する**（一時フォルダの中だけ）。
+    /// 削除後にだけ出る注意書きと、完全削除のボタン・ダイアログの文言を見るため。
+    func testNoJapaneseAppearsAnywhereInPermanentMode() throws {
+        launch(settings: ["moveToTrash": "NO", "deleteAllDSStoreFiles": "YES", "includeDSStoreOnlyFolders": "YES"])
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 30), "ウィンドウが表示されません")
+        XCTAssertTrue(app.buttons["Choose Folder"].waitForExistence(timeout: 10), "英語で起動していません（Choose Folder が見つかりません）")
+
+        chooseFixtureFolderViaPanel()
+        // 空フォルダ6件に加え、実ファイルのある Documents の中の単独の .DS_Store が1件
+        waitForStatus(containing: "Found 6 empty folders and 1 .DS_Store file.")
+        assertTargetIsFixture()
+
+        // --- 完全削除モードのボタンとダイアログ
+        let button = app.buttons["button.delete"]
+        XCTAssertTrue(button.waitForExistence(timeout: 10))
+        XCTAssertTrue(button.label.contains("Delete Permanently"),
+                      "完全削除モードのボタンが英語になっていません（起動引数が効いていない可能性）: 「\(button.label)」")
+        assertNoJapanese(try strings(in: app.windows), on: "完全削除モードの画面")
+
+        button.click()
+        let dialog = app.dialogs.firstMatch
+        XCTAssertTrue(dialog.waitForExistence(timeout: 10), "完全削除の確認ダイアログが出ません")
+        let dialogStrings = try strings(in: dialog)
+        XCTAssertTrue(dialog.buttons["Delete Permanently"].exists && dialog.buttons["Cancel"].exists,
+                      "完全削除のダイアログのボタンが英語になっていません: \(dialogStrings)")
+        assertNoJapanese(dialogStrings, on: "確認ダイアログ（完全削除）")
+
+        // --- 実際に削除する。**もう一度、対象が fixture であることを確かめてから。**
+        // ダイアログは対象を隠さない（メインウィンドウのラベルは取得できる）が、念のため押す直前に照合する。
+        assertTargetIsFixture()
+        assertUnderTemporaryDirectory(root)
+        dialog.buttons["Delete Permanently"].click()
+        waitForStatus(containing: "Permanently deleted")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("Photos").path), "空フォルダが削除されていません")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("Documents/Report.txt").path), "実ファイルまで消えています")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent("Documents/.DS_Store").path), "単独の .DS_Store が消えていません")
+
+        let afterDelete = try strings(in: app.windows)
+        XCTAssertTrue(afterDelete.contains { $0.contains("recreated automatically") },
+                      "削除後だけ出る注意書きが英語で出ていません: \(afterDelete)")
+        assertNoJapanese(afterDelete, on: "削除後の画面")
     }
 }

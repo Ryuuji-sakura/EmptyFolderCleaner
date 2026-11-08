@@ -105,7 +105,7 @@ xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
   -configuration Release -derivedDataPath build build
 ```
 
-テスト（ユニット45件 + UI 11件）:
+テスト（ユニット45件 + UI 12件）:
 
 ```sh
 xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
@@ -119,7 +119,8 @@ AppKit にも main actor にも依存していないため、実ファイルシ�
 フォルダを開くことで、サンドボックスの許可が付いた本番同様の状態を作っています。
 画面の日本語を照合するので、優先言語が日本語の Mac で実行してください（それ以外の環境では
 自動的に飛ばされます）。`EnglishScreenTests` だけは、英語で起動して画面に日本語が残って
-いないことを確かめるテストで、環境の言語に関係なく動きます。
+いないことを確かめるテストで、環境の言語に関係なく動きます。設定は起動引数で固定し、
+UI では切り替えないので、途中で失敗しても開発機のアプリの設定は書き換わりません。
 
 ### 文言（日本語・英語）
 

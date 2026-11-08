@@ -150,8 +150,12 @@ final class SweepMessagesTests: XCTestCase {
     // MARK: - 英語に日本語が残っていない
 
     private func containsJapanese(_ text: String) -> Bool {
+        // 漢字は isIdeographic で見る。4E00...9FFF だけでは、拡張A・拡張B以降・互換漢字
+        // （「㐂」「𠮷」「﨑」）を逃す。
         text.unicodeScalars.contains {
-            (0x3040...0x30FF).contains($0.value) || (0x4E00...0x9FFF).contains($0.value) || (0xFF00...0xFFEF).contains($0.value)
+            $0.properties.isIdeographic
+                || (0x3000...0x30FF).contains($0.value) || (0x31F0...0x31FF).contains($0.value)
+                || (0xFF00...0xFFEF).contains($0.value)
         }
     }
 
