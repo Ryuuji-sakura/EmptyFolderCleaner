@@ -1,0 +1,1092 @@
+{
+  "sourceLanguage": "ja",
+  "strings": {
+    "%@ をFinderで表示": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show %@ in Finder"
+          }
+        }
+      }
+    },
+    "%@ を削除する": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete %@"
+          }
+        }
+      }
+    },
+    "%@、%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ and %2$@"
+          }
+        }
+      }
+    },
+    "%@が見つかりました。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Found %@."
+          }
+        }
+      }
+    },
+    "%@をゴミ箱に入れました。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved %@ to the Trash."
+          }
+        }
+      }
+    },
+    "%@をゴミ箱に移動します。間違えたときはゴミ箱から戻せます。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ will be moved to the Trash. Anything moved by mistake can be put back from the Trash."
+          }
+        }
+      }
+    },
+    "%@を完全に削除しました。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permanently deleted %@."
+          }
+        }
+      }
+    },
+    "%@を完全に削除します。ゴミ箱には入らず、元に戻せません。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ will be permanently deleted. This skips the Trash and cannot be undone."
+          }
+        }
+      }
+    },
+    "%lld 件の空フォルダが見つかりました。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Found %lld empty folder."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Found %lld empty folders."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld 件は、中身が残っていたため削除しませんでした。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld folder was left in place because it is no longer empty."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld folders were left in place because they are no longer empty."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld 件は処理できませんでした（%@）。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld item could not be processed (%@)."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld items could not be processed (%@)."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld 件中 %lld 件を選択": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$lld of %1$lld selected"
+          }
+        }
+      }
+    },
+    "%lld 個の .DS_Store が見つかりました。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Found %lld .DS_Store file."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Found %lld .DS_Store files."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    ".DS_Store %lld 個": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld .DS_Store file"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld .DS_Store files"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "1. フォルダをウィンドウにドラッグ＆ドロップするか、「フォルダを選択」で選びます。Dockのアイコンに直接ドロップすることもできます。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. Drag and drop a folder onto the window, or pick one with “Choose Folder”. You can also drop it directly onto the Dock icon."
+          }
+        }
+      }
+    },
+    "2. 見つかったものが一覧に出ます。消したくないものはチェックを外してください。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. What was found appears in a list. Uncheck anything you want to keep."
+          }
+        }
+      }
+    },
+    "3. 行をダブルクリックすると、そのフォルダがFinderで開きます。行の右端のボタンでも同じです。消す前に中身を確かめたいときに。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. Double-click a row to open that folder in Finder. The button at the right end of the row does the same. Handy when you want to check the contents before deleting."
+          }
+        }
+      }
+    },
+    "4. 「ゴミ箱に入れる」を押すと実行します。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4. Press “Move to Trash” to carry it out."
+          }
+        }
+      }
+    },
+    "Finderで表示": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show in Finder"
+          }
+        }
+      }
+    },
+    "Finderの設定ファイルだけが残っているフォルダも、空として削除する": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also delete folders that contain only a Finder settings file"
+          }
+        }
+      }
+    },
+    "Finderの設定ファイルについての説明": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About Finder settings files"
+          }
+        }
+      }
+    },
+    "Finderの設定ファイルをすべて削除する（フォルダと中のファイルは残ります）": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete all Finder settings files (the folders and the files in them stay)"
+          }
+        }
+      }
+    },
+    "Finderの設定ファイル（.DS_Store）": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finder settings files (.DS_Store)"
+          }
+        }
+      }
+    },
+    "NASやクラウド同期を使っていると、名前が「.DS_Store 12-34-56」のように変わっていることがあります。これも同じものとして扱いますが、ファイルの中身を確認してFinderが作ったものだけを消すため、ご自分で付けた名前のファイルが消えることはありません。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With a NAS or cloud sync, the name may change to something like “.DS_Store 12-34-56”. These are treated the same way, but the app checks each file's contents and deletes only what Finder created, so a file you named yourself is never removed."
+          }
+        }
+      }
+    },
+    "、": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ", "
+          }
+        }
+      }
+    },
+    "「Finderの設定ファイル」とは": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What is a “Finder settings file”?"
+          }
+        }
+      }
+    },
+    "「削除したものをゴミ箱に入れる」のチェックを外すと完全削除になり、元に戻せません。このときはボタンが赤くなり、確認画面でもEnterキーでは実行できないようにしてあります。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you uncheck “Move deleted items to the Trash”, deletion becomes permanent and cannot be undone. In that mode the button turns red, and the confirmation dialog cannot be accepted with the Return key."
+          }
+        }
+      }
+    },
+    "ここにフォルダをドラッグ＆ドロップ": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag and drop a folder here"
+          }
+        }
+      }
+    },
+    "ここにフォルダをドラッグ＆ドロップすると、中の空フォルダを探します": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag and drop a folder here to look for empty folders inside it"
+          }
+        }
+      }
+    },
+    "このあとFinderでこのフォルダを開くと、設定ファイルが自動的に作り直されることがあります。削除に失敗したわけではありません。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you open this folder in Finder afterwards, the settings file may be recreated automatically. The deletion did not fail."
+          }
+        }
+      }
+    },
+    "このアプリがすること": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What this app does"
+          }
+        }
+      }
+    },
+    "すべて選択": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select All"
+          }
+        }
+      }
+    },
+    "そのため既定では、これだけが残っているフォルダも空として扱います。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That is why, by default, a folder containing only this file is treated as empty."
+          }
+        }
+      }
+    },
+    "ほか%lld件": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "and %lld more"
+          }
+        }
+      }
+    },
+    "まだ残りがあります。もう一度実行してください。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some items remain. Please run it again."
+          }
+        }
+      }
+    },
+    "もう一度調べる": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan Again"
+          }
+        }
+      }
+    },
+    "キャンセル": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "ゴミ箱と完全削除": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trash and permanent deletion"
+          }
+        }
+      }
+    },
+    "ゴミ箱に入れますか？": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to the Trash?"
+          }
+        }
+      }
+    },
+    "ゴミ箱に入れる": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Trash"
+          }
+        }
+      }
+    },
+    "ゴミ箱に入れる（%lld件）": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Move to Trash (%lld item)"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Move to Trash (%lld items)"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ゴミ箱に移動中...": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moving to the Trash…"
+          }
+        }
+      }
+    },
+    "ゴミ箱に移動中... %@ 件": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moving to the Trash… items done: %@"
+          }
+        }
+      }
+    },
+    "スキャンの進み具合": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan progress"
+          }
+        }
+      }
+    },
+    "スキャンを中止しました。もう一度調べるには「もう一度調べる」を押してください。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan stopped. Press “Scan Again” to start over."
+          }
+        }
+      }
+    },
+    "スキャン中...": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning…"
+          }
+        }
+      }
+    },
+    "スキャン中... %@ 項目": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning… items checked: %@"
+          }
+        }
+      }
+    },
+    "ダブルクリックでFinderに表示": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Double-click to show in Finder"
+          }
+        }
+      }
+    },
+    "ダブルクリックでFinderに表示します": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Double-click to show it in Finder"
+          }
+        }
+      }
+    },
+    "ファイル %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File %@"
+          }
+        }
+      }
+    },
+    "フォルダ": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder"
+          }
+        }
+      }
+    },
+    "フォルダ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder %@"
+          }
+        }
+      }
+    },
+    "フォルダのドロップ先": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folder drop area"
+          }
+        }
+      }
+    },
+    "フォルダの並び順やウィンドウの大きさを覚えておくために、Finderが自動で作る見えないファイルです。これが1つ残っているだけで、見た目は空なのに「空ではない」と判定されてしまいます。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An invisible file that Finder creates automatically to remember a folder's sort order and window size. Even one of these left behind makes a folder that looks empty count as “not empty”."
+          }
+        }
+      }
+    },
+    "フォルダを選んでください": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please choose a folder"
+          }
+        }
+      }
+    },
+    "フォルダを選択": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Folder"
+          }
+        }
+      }
+    },
+    "フォルダを選択...": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Folder…"
+          }
+        }
+      }
+    },
+    "ホームフォルダのような大きな場所を選ぶと、調べるのに時間がかかります。進み具合は「スキャン中... ○○項目」と表示されます。途中でやめたいときは「中止」を押してください。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choosing a large location such as your home folder takes a while to scan. Progress is shown as “Scanning… items checked: N”. Press “Stop” if you want to quit part way."
+          }
+        }
+      }
+    },
+    "中止": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop"
+          }
+        }
+      }
+    },
+    "中止したときは、調べかけの結果は捨てます。まだ見ていない場所にファイルが残っているかもしれず、「空に見えただけ」のフォルダを消す候補にするわけにはいかないからです。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When you stop, the partial results are discarded. There may be files in places the scan has not reached yet, and a folder that only looked empty must never be offered for deletion."
+          }
+        }
+      }
+    },
+    "中止しています...": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopping…"
+          }
+        }
+      }
+    },
+    "中止しました。削除したものはありません。残りを調べるには「もう一度調べる」を押してください。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopped. Nothing was deleted. Press “Scan Again” to check what remains."
+          }
+        }
+      }
+    },
+    "中止しました。残りを調べるには「もう一度調べる」を押してください。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopped. Press “Scan Again” to check what remains."
+          }
+        }
+      }
+    },
+    "使いかた": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How to Use"
+          }
+        }
+      }
+    },
+    "処理中です。中止するか、終わるのを待ってからもう一度ドロップしてください。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busy. Stop the current task or wait for it to finish, then drop the folder again."
+          }
+        }
+      }
+    },
+    "削除したものをゴミ箱に入れる（オフにすると元に戻せません）": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move deleted items to the Trash (if turned off, they cannot be restored)"
+          }
+        }
+      }
+    },
+    "削除しませんでした。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was deleted."
+          }
+        }
+      }
+    },
+    "削除できるものはありませんでした。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There was nothing to delete."
+          }
+        }
+      }
+    },
+    "削除できるものは見つかりませんでした。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing to delete was found."
+          }
+        }
+      }
+    },
+    "削除の進み具合": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deletion progress"
+          }
+        }
+      }
+    },
+    "削除中...": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleting…"
+          }
+        }
+      }
+    },
+    "削除中... %@ 件": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleting… items done: %@"
+          }
+        }
+      }
+    },
+    "完全に削除しますか？": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete permanently?"
+          }
+        }
+      }
+    },
+    "完全に削除する": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete Permanently"
+          }
+        }
+      }
+    },
+    "完全に削除する（%lld件）": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete Permanently (%lld item)"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Delete Permanently (%lld items)"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "対象が変わったので中止しました。内容を確認してからもう一度実行してください。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The target changed, so the operation was cancelled. Review the list and try again."
+          }
+        }
+      }
+    },
+    "対象のフォルダ %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target folder %@"
+          }
+        }
+      }
+    },
+    "既定ではゴミ箱に入れます。間違えたときはゴミ箱から元に戻せます。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By default, items go to the Trash. If you make a mistake, you can put them back from the Trash."
+          }
+        }
+      }
+    },
+    "時間がかかるとき": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When it takes a while"
+          }
+        }
+      }
+    },
+    "正式には「.DS_Store」という名前の、目に見えないファイルです。フォルダを開いたときの並び順、ウィンドウの大きさ、アイコンの位置などを覚えておくために、Finderが自動で作ります。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Its real name is “.DS_Store”, an invisible file. Finder creates it automatically to remember a folder's sort order, window size, icon positions, and so on."
+          }
+        }
+      }
+    },
+    "消してもフォルダ名や中のファイルには影響しません。次にそのフォルダをFinderで開くと、自動的に作り直されます。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleting it does not affect folder names or the files inside. Finder recreates it the next time you open that folder."
+          }
+        }
+      }
+    },
+    "消してもフォルダ名や中のファイルには影響しません。次にそのフォルダをFinderで開くと自動的に作り直されるので、消えていないように見えることがありますが、失敗したわけではありません。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleting it does not affect folder names or the files inside. Finder recreates it the next time you open that folder, so it can look as if it was not deleted, but nothing failed."
+          }
+        }
+      }
+    },
+    "確認済み・消し残しはありません。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verified: nothing was left behind."
+          }
+        }
+      }
+    },
+    "空フォルダ %lld 件": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld empty folder"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld empty folders"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "空フォルダ削除": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empty Folder Sweeper"
+          }
+        }
+      }
+    },
+    "空フォルダ削除の使いかた": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How to Use Empty Folder Sweeper"
+          }
+        }
+      }
+    },
+    "選んだフォルダの中から、空のフォルダを探します。選んだフォルダ自体は消えません。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Looks for empty folders inside the folder you choose. The folder you choose is never deleted itself."
+          }
+        }
+      }
+    },
+    "選んだフォルダの中を調べて、中身が何も入っていないフォルダを探します。入れ子になっていても、いちばん奥まで一度で見つけます。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It looks inside the folder you choose and finds folders that contain nothing. Even when folders are nested, it finds them all the way down in one pass."
+          }
+        }
+      }
+    },
+    "選んだフォルダ自体は消えません。写真や書類など、実際のファイルが1つでも入っているフォルダも消えません。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The folder you choose is never deleted. A folder that holds even one real file, such as a photo or a document, is never deleted either."
+          }
+        }
+      }
+    },
+    "選択": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

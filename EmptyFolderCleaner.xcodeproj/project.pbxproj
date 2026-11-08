@@ -9,14 +9,19 @@
 /* Begin PBXBuildFile section */
 		021F8D628A5AF0F41BA6F21F /* EmptyFolderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA6CC1C467D9BCD8E086BE84 /* EmptyFolderModel.swift */; };
 		237D100FA415F492D6947883 /* FolderSweeperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F389067349E11F75B9C38AE0 /* FolderSweeperTests.swift */; };
+		2F427754E1F943EB7B6F40DF /* SweepMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E7463030BFF58C52A6A8A32 /* SweepMessages.swift */; };
 		3975DC01C11A2F91028F3A26 /* EmptyFolderCleanerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F009C93E6C442A115753EB2 /* EmptyFolderCleanerApp.swift */; };
 		40590E60ECBBBDAF92354CC9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6714878F4BE7D498A1B9DB42 /* ContentView.swift */; };
+		48C83AF5AF87DE2E88E87B72 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 16E94DF52A0CC28160F20563 /* Localizable.xcstrings */; };
 		4B19B82D6002882FC9E7E55F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B705CA646A19BD2D616D2CC /* AppDelegate.swift */; };
 		60EA2BC961280EAA4C178CD7 /* EmptyFolderCleanerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7BC7972493AD5A336BD057B /* EmptyFolderCleanerUITests.swift */; };
 		696B53322DBDCB8907D1ED34 /* FolderSweeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF9A90E8A8328B8244A293F /* FolderSweeper.swift */; };
+		6A2FB0F7EF47142A4FBCF097 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 16E94DF52A0CC28160F20563 /* Localizable.xcstrings */; };
+		7148034042C469153D250D19 /* SweepMessagesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5760A7D65A0DB957442F51B8 /* SweepMessagesTests.swift */; };
 		789F59DC5E7F46075A0F4724 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = D7E2E493CDA42954CCB18B7F /* InfoPlist.strings */; };
 		7F0F3F8921BE5C3B57D06C26 /* FolderSweeper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF9A90E8A8328B8244A293F /* FolderSweeper.swift */; };
 		8DF1B5CF613BB19B0AE47815 /* HelpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39F382BC2DFCE796AD076C5D /* HelpView.swift */; };
+		98211A78C48D814223CA574C /* SweepMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E7463030BFF58C52A6A8A32 /* SweepMessages.swift */; };
 		BD56B1D1EA5B93BBDC964FF4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 39E5420397491088B2BE71EE /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -31,6 +36,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		16E94DF52A0CC28160F20563 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		2BE70B88F03423C3352AEFEC /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		2E7463030BFF58C52A6A8A32 /* SweepMessages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepMessages.swift; sourceTree = "<group>"; };
 		328BC7097ECE461D8751CA14 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		33804A2E641F4972257F9D76 /* EmptyFolderCleaner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EmptyFolderCleaner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		39E5420397491088B2BE71EE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -38,6 +46,7 @@
 		3B431C9EA122F1B3B5A21F3E /* EmptyFolderCleanerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EmptyFolderCleanerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3FF9A90E8A8328B8244A293F /* FolderSweeper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderSweeper.swift; sourceTree = "<group>"; };
 		4F009C93E6C442A115753EB2 /* EmptyFolderCleanerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyFolderCleanerApp.swift; sourceTree = "<group>"; };
+		5760A7D65A0DB957442F51B8 /* SweepMessagesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SweepMessagesTests.swift; sourceTree = "<group>"; };
 		5B705CA646A19BD2D616D2CC /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		6714878F4BE7D498A1B9DB42 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		C7BC7972493AD5A336BD057B /* EmptyFolderCleanerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyFolderCleanerUITests.swift; sourceTree = "<group>"; };
@@ -51,6 +60,7 @@
 			isa = PBXGroup;
 			children = (
 				F389067349E11F75B9C38AE0 /* FolderSweeperTests.swift */,
+				5760A7D65A0DB957442F51B8 /* SweepMessagesTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -65,6 +75,8 @@
 				DA6CC1C467D9BCD8E086BE84 /* EmptyFolderModel.swift */,
 				3FF9A90E8A8328B8244A293F /* FolderSweeper.swift */,
 				39F382BC2DFCE796AD076C5D /* HelpView.swift */,
+				16E94DF52A0CC28160F20563 /* Localizable.xcstrings */,
+				2E7463030BFF58C52A6A8A32 /* SweepMessages.swift */,
 				D7E2E493CDA42954CCB18B7F /* InfoPlist.strings */,
 			);
 			path = EmptyFolderCleaner;
@@ -142,6 +154,7 @@
 			buildConfigurationList = F3FC113AE72C91B9054FACF3 /* Build configuration list for PBXNativeTarget "EmptyFolderCleanerTests" */;
 			buildPhases = (
 				B8A75E2B0E0588D38AFC2992 /* Sources */,
+				A5A86BE8DAA0CE8F0685D8BB /* Resources */,
 			);
 			buildRules = (
 			);
@@ -182,6 +195,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
+				en,
 				ja,
 			);
 			mainGroup = 8A419F69026C8AA41F23D6E6;
@@ -199,12 +213,21 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		A5A86BE8DAA0CE8F0685D8BB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6A2FB0F7EF47142A4FBCF097 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F93ACFFED3100BA60DDDE39D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				BD56B1D1EA5B93BBDC964FF4 /* Assets.xcassets in Resources */,
 				789F59DC5E7F46075A0F4724 /* InfoPlist.strings in Resources */,
+				48C83AF5AF87DE2E88E87B72 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -221,6 +244,7 @@
 				021F8D628A5AF0F41BA6F21F /* EmptyFolderModel.swift in Sources */,
 				7F0F3F8921BE5C3B57D06C26 /* FolderSweeper.swift in Sources */,
 				8DF1B5CF613BB19B0AE47815 /* HelpView.swift in Sources */,
+				98211A78C48D814223CA574C /* SweepMessages.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -230,6 +254,8 @@
 			files = (
 				696B53322DBDCB8907D1ED34 /* FolderSweeper.swift in Sources */,
 				237D100FA415F492D6947883 /* FolderSweeperTests.swift in Sources */,
+				2F427754E1F943EB7B6F40DF /* SweepMessages.swift in Sources */,
+				7148034042C469153D250D19 /* SweepMessagesTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -255,6 +281,7 @@
 		D7E2E493CDA42954CCB18B7F /* InfoPlist.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
+				2BE70B88F03423C3352AEFEC /* en */,
 				328BC7097ECE461D8751CA14 /* ja */,
 			);
 			name = InfoPlist.strings;
@@ -327,7 +354,7 @@
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = Y9B2784T8A;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -337,7 +364,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ryuujisakura.emptyfoldercleaner;
 				PRODUCT_MODULE_NAME = EmptyFolderCleaner;
 				PRODUCT_NAME = EmptyFolderCleaner;
@@ -353,7 +380,7 @@
 				CODE_SIGN_ENTITLEMENTS = EmptyFolderCleaner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = Y9B2784T8A;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -363,7 +390,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ryuujisakura.emptyfoldercleaner;
 				PRODUCT_MODULE_NAME = EmptyFolderCleaner;
 				PRODUCT_NAME = EmptyFolderCleaner;
@@ -563,7 +590,7 @@
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = Y9B2784T8A;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -573,7 +600,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ryuujisakura.emptyfoldercleaner;
 				PRODUCT_MODULE_NAME = EmptyFolderCleaner;
 				PRODUCT_NAME = EmptyFolderCleaner;

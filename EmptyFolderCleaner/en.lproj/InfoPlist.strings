@@ -1,0 +1,4 @@
+/* メニューバーとDockに出る名前。日本語版は ja.lproj/InfoPlist.strings。
+   PRODUCT_NAME は英語のままで、表示名だけをここで切り替えている。 */
+"CFBundleName" = "Empty Folder Sweeper";
+"CFBundleDisplayName" = "Empty Folder Sweeper";

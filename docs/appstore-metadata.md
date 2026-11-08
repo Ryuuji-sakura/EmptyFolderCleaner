@@ -124,3 +124,104 @@ Finderは「.DS_Store」という見えないファイルを自動で作りま�
 - entitlements は `app-sandbox` と `files.user-selected.read-write` の2つだけ
 - `UserDefaults` に保存しているのは設定フラグ3つのみ。対象フォルダのパスも
   スキャン結果も保存しない
+
+---
+
+# 英語版（English (U.S.)）
+
+v1.6 で英語を追加した。App Store Connect で言語に **English (U.S.)** を足して入力する。
+日本語の掲載はそのまま残る（言語ごとに別の文面を持てる）。
+
+## 名前: `Empty Folder Sweeper`
+
+**`Empty Folder Cleaner` は使えない。** 2026-11-09 に iTunes Search API で調べたところ、
+同名のアプリが別の開発者（晓强 江）で既に公開されている。アプリ内の表示名
+（`en.lproj/InfoPlist.strings` とカタログ）も `Empty Folder Sweeper` に揃えてある。
+
+候補を6つ調べて、米国・日本のストアに同名・類似名が無かったものから選んだ
+（Empty Folder Sweep / Folder Sweeper / Empty Folder Tidy / Sweep Empty Folders /
+Empty Folder Eraser も同様に空いていた）。ただし**未公開のアプリが予約している名前は
+検索に出ない**ので、最終的には App Store Connect に入力して通るかで決まる。
+通らなければ候補から選び直し、アプリ内の表示名も同じ名前に直して再ビルドする。
+
+## サブタイトル（30字以内 / 28字）
+
+```
+Find and clear empty folders
+```
+
+## プロモーション用テキスト（170字以内 / 164字）
+
+```
+Drag and drop a folder to find the empty folders inside it and clear them out. You choose what goes, and everything lands in the Trash first, so it can be put back.
+```
+
+## キーワード（100字以内 / 92字）
+
+名前に含まれる語（empty / folder / sweeper）は既に検索対象なので入れていない。
+
+```
+cleanup,tidy,declutter,DS_Store,organizer,disk,Finder,remove,delete,unused,directories,sweep
+```
+
+## 概要（4,000字以内 / 1552字）
+
+```
+Find the empty folders hiding inside a folder you choose and clear them out in one go.
+No Terminal needed. Just drag and drop a folder.
+
+■ Even deeply nested folders, in one pass
+It finds nested empty folders all the way down. Folders that become empty after a deletion are cleared in the same run, so you don't have to start over again and again.
+
+■ Choose what to remove
+Everything found is listed for you to review. Uncheck anything you want to keep. Double-click a row to open that folder in Finder and check its contents before you decide.
+
+■ The Trash by default
+Deleted items go to the Trash, so a mistake can be undone with Put Back in Finder. A run of nested folders goes to the Trash as a single item, so it doesn't clutter the Trash.
+
+■ Handles invisible files too
+Finder quietly creates an invisible file called ".DS_Store". Just one of them left behind makes a folder look empty yet refuse to be deleted. This app treats such folders as empty. It checks each file's contents and removes only genuine Finder files, so a file you named yourself is never touched.
+
+■ Safe by design
+• The folder you choose is never deleted
+• A folder holding even one real file is never deleted
+• Symbolic links are never followed
+• It does not go inside packages such as apps and photo libraries
+• It does not go inside hidden folders such as ".git"
+
+■ Large folders, too
+A progress bar and a live count show how far along it is, and you can stop at any time.
+
+■ Privacy
+The app makes no network connections at all. It can only access the folder you give it.
+```
+
+## スクリーンショット
+
+`docs/appstore/` の `screenshot-en-*.png`（1280×800）。英語名のデモフォルダを開いて撮った。
+
+- `screenshot-en-1-list-1280x800.png`
+- `screenshot-en-2-selection-1280x800.png`
+
+## App Review のメモ
+
+メモ欄は言語ごとには分かれない。審査担当者は英語で読むので、英語に差し替えるのがよい
+（日本語版は上の「メモ」を参照）。
+
+```
+This app is a utility that looks inside a folder the user chooses and deletes folders that contain nothing.
+
+How to test:
+1. Create a few empty folders somewhere such as the Desktop (nesting makes it easier to see, e.g. Test/A/B).
+2. Drag and drop that folder onto the app window (dropping it on the Dock icon also works).
+3. The empty folders found are listed.
+4. Use the checkboxes to choose which to remove. Double-clicking a row shows that folder in Finder.
+5. Press "Move to Trash". By default items are moved to the Trash, so they can be restored with "Put Back" in Finder.
+
+Notes:
+- Choosing a large location such as the home folder takes longer to scan. Progress is shown as a count and a progress bar, and the Stop button can stop it at any time.
+- The folder you choose is never deleted, and folders that contain real files are never deleted.
+- The app uses the App Sandbox and can only access folders the user explicitly provides.
+- The app makes no network connections.
+- The interface is available in Japanese and English.
+```

@@ -147,7 +147,13 @@ struct ContentView: View {
                     Button {
                         confirmAndDelete()
                     } label: {
-                        Text("\(model.moveToTrash ? "ゴミ箱に入れる" : "完全に削除する")（\(model.selectedCount)件）")
+                        // 動詞だけ切り替えて数を後ろに付けると、英語は語順が合わず単複も
+                        // 効かない。モードごとに文全体を別のキーにしている。
+                        if model.moveToTrash {
+                            Text("ゴミ箱に入れる（\(model.selectedCount)件）")
+                        } else {
+                            Text("完全に削除する（\(model.selectedCount)件）")
+                        }
                     }
                     .buttonStyle(PopButtonStyle(colors: model.moveToTrash
                                                 ? [Color.deepMagenta, Color.deepBlue]
@@ -245,7 +251,7 @@ struct ContentView: View {
         ProgressView(value: model.progress)
             .progressViewStyle(.linear)
             .accessibilityIdentifier("progress.scan")
-            .accessibilityLabel(model.isDeleting ? "削除の進み具合" : "スキャンの進み具合")
+            .accessibilityLabel(model.isDeleting ? LocalizedStringKey("削除の進み具合") : LocalizedStringKey("スキャンの進み具合"))
     }
 
     private var optionToggles: some View {
@@ -317,7 +323,7 @@ struct ContentView: View {
         .padding(18)
     }
 
-    private func optionLabel(_ text: String) -> some View {
+    private func optionLabel(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(.system(.caption, design: .rounded).weight(.semibold))
             .foregroundStyle(.primary)
@@ -397,7 +403,7 @@ struct ContentView: View {
                         .onTapGesture(count: 2) { model.revealInFinder(item.url) }
                         .help("ダブルクリックでFinderに表示")
                         .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("\(item.isFolder ? "フォルダ" : "ファイル") \(path)")
+                        .accessibilityLabel(item.isFolder ? LocalizedStringKey("フォルダ \(path)") : LocalizedStringKey("ファイル \(path)"))
                         .accessibilityHint("ダブルクリックでFinderに表示します")
                         .accessibilityIdentifier("row.\(path)")
 
@@ -494,24 +500,18 @@ struct ContentView: View {
 
     private func confirmAndDelete() {
         let alert = NSAlert()
-        var parts: [String] = []
-        let folders = model.selectedEmptyFolders.count
-        let files = model.selectedDSStoreFiles.count
-        if folders > 0 { parts.append("空フォルダ \(folders) 件") }
-        if files > 0 { parts.append(".DS_Store \(files) 個") }
-        let summary = parts.joined(separator: "、")
-        if model.moveToTrash {
-            alert.messageText = "ゴミ箱に入れますか？"
-            alert.informativeText = "\(summary)をゴミ箱に移動します。間違えたときはゴミ箱から戻せます。"
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: "ゴミ箱に入れる")
-        } else {
-            alert.messageText = "完全に削除しますか？"
-            alert.informativeText = "\(summary)を完全に削除します。ゴミ箱には入らず、元に戻せません。"
-            alert.alertStyle = .critical
-            alert.addButton(withTitle: "完全に削除する")
-        }
-        alert.addButton(withTitle: "キャンセル")
+        // 文面は SweepMessages にまとめてある。日本語と英語で語順が違い、件数の
+        // 単複も変わるので、ここで文字列を組み立てると英語が崩れる。
+        let text = SweepMessages.standard.confirmation(
+            folders: model.selectedEmptyFolders.count,
+            files: model.selectedDSStoreFiles.count,
+            moveToTrash: model.moveToTrash
+        )
+        alert.messageText = text.title
+        alert.informativeText = text.body
+        alert.alertStyle = model.moveToTrash ? .informational : .critical
+        alert.addButton(withTitle: text.confirmButton)
+        alert.addButton(withTitle: text.cancelButton)
 
         // Escape でキャンセルできるようにする。NSAlert が Escape を自動で割り当てるのは
         // ボタン名が英語の "Cancel" のときだけで、「キャンセル」では付かない。

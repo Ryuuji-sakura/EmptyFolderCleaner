@@ -17,6 +17,17 @@ final class EmptyFolderCleanerUITests: XCTestCase {
     override func setUpWithError() throws {
         try super.setUpWithError()
         continueAfterFailure = false
+
+        // 画面の文言を日本語で照合している。英語が優先言語の環境ではアプリが英語で
+        // 立ち上がり、「ステータスが○○にならない」という原因の分かりにくい失敗になる。
+        // 起動引数でアプリの言語を固定する手は使えない（LaunchServices 経由の起動では
+        // 引数がアプリに届かない）ので、前提を満たさない環境ははっきり飛ばす。
+        // 英語の文面そのものは SweepMessagesTests が言語を指定して検証している。
+        try XCTSkipUnless(
+            Locale.preferredLanguages.first?.hasPrefix("ja") == true,
+            "UIテストは日本語の画面を前提にしています（優先言語: \(Locale.preferredLanguages.first ?? "不明")）"
+        )
+
         terminateApp()
         root = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("\(Self.fixturePrefix)-\(UUID().uuidString)")

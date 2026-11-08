@@ -29,6 +29,8 @@
   中に空のフォルダがあっても触りません
 - **隠しフォルダの中には入りません**。`.git` などの内部構造を壊しません
 - App Sandbox 対応。アクセスできるのは、あなたが選んだフォルダだけです
+- **日本語と英語に対応**しています。Mac の優先言語に合わせて切り替わります。
+  英語では `Empty Folder Sweeper` という名前で表示されます
 
 ## インストール
 
@@ -36,6 +38,8 @@
 ダウンロードして開き、`空フォルダ削除.app` を `Applications` フォルダにドラッグしてください。
 
 **必要な環境**: macOS 14 (Sonoma) 以降
+
+画面の言語は Mac の「優先する言語」に従います（日本語・英語）。英語が優先言語に無い場合は日本語で表示されます。
 
 ## 使い方
 
@@ -101,7 +105,7 @@ xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
   -configuration Release -derivedDataPath build build
 ```
 
-テスト（ユニット24件 + UI 5件）:
+テスト（ユニット45件 + UI 10件）:
 
 ```sh
 xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
@@ -113,6 +117,22 @@ AppKit にも main actor にも依存していないため、実ファイルシ�
 
 `UITests/` は実際のアプリを起動して操作する E2E テストです。LaunchServices 経由で
 フォルダを開くことで、サンドボックスの許可が付いた本番同様の状態を作っています。
+画面の日本語を照合するので、優先言語が日本語の Mac で実行してください（それ以外の環境では
+自動的に飛ばされます）。
+
+### 文言（日本語・英語）
+
+画面に出す文は `EmptyFolderCleaner/Localizable.xcstrings` に日英を持ちます。キーは日本語の
+原文そのものです（日本語を直したら、同じ原文のキーの英訳も直す）。件数から組み立てる文は
+`SweepMessages.swift` にまとめてあり、**英語の文面はユニットテストが言語を指定して検証**します。
+
+```sh
+./Scripts/check-localization.py
+```
+
+画面のリテラルとカタログの食い違い（訳の抜け・引数の不一致・`String` 経由で翻訳されなくなった
+箇所）を調べます。訳の無い文言はエラーにならず日本語のまま表示されるので、ビルドでは
+気づけません。`release.sh` と `appstore.sh` の途中で自動的に走ります。
 
 リリース（Developer ID 署名・公証・staple・検証）:
 

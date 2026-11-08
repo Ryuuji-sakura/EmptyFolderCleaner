@@ -24,7 +24,7 @@ final class EmptyFolderModel: ObservableObject {
     @Published private(set) var progress: Double?
     // すぐ上のドロップ領域と同じことを繰り返しても情報が増えない。フォルダを消すアプリで
     // 最初に伝えるべきなのは「選んだフォルダ自体は消えない」という一点。
-    @Published var statusMessage = "選んだフォルダの中から、空のフォルダを探します。選んだフォルダ自体は消えません。"
+    @Published var statusMessage = SweepMessages.standard.idle
     /// True right after a delete that removed at least one `.DS_Store`, so the UI can
     /// warn that Finder may recreate it the moment this folder is viewed again —
     /// otherwise a user who checks in Finder sees it "come back" and assumes the
@@ -58,6 +58,10 @@ final class EmptyFolderModel: ObservableObject {
     @Published var moveToTrash: Bool {
         didSet { UserDefaults.standard.set(moveToTrash, forKey: Self.moveToTrashKey) }
     }
+
+    /// 画面に出す文はすべてここを通す。言語の切り替えやテストでの差し替えを
+    /// 一か所で扱うため。
+    private var messages: SweepMessages { .standard }
 
     private static let includeDSStoreOnlyFoldersKey = "includeDSStoreOnlyFolders"
     private static let deleteAllDSStoreFilesKey = "deleteAllDSStoreFiles"
@@ -138,12 +142,12 @@ final class EmptyFolderModel: ObservableObject {
         // 対象だけ差し替わると、`scan()` が走らないまま画面のパスと一覧が食い違い、
         // 次の削除がユーザーの見ていないフォルダに対して走ってしまう。
         guard !isBusy else {
-            statusMessage = "処理中です。中止するか、終わるのを待ってからもう一度ドロップしてください。"
+            statusMessage = messages.busyDrop
             return
         }
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue else {
-            statusMessage = "フォルダを選んでください"
+            statusMessage = messages.chooseAFolder
             return
         }
         targetFolder = url
@@ -155,7 +159,7 @@ final class EmptyFolderModel: ObservableObject {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.prompt = "選択"
+        panel.prompt = messages.choosePrompt
         if panel.runModal() == .OK, let url = panel.url {
             setTargetFolder(url)
         }
@@ -173,7 +177,7 @@ final class EmptyFolderModel: ObservableObject {
         dsStoreFiles = []
         selectedPaths = []
         showDSStoreReappearNote = false
-        statusMessage = "スキャン中..."
+        statusMessage = messages.scanStarted
         let options = sweepOptions
         let control = makeControl(token: token)
         runningTask = Task.detached(priority: .userInitiated) {
@@ -183,14 +187,14 @@ final class EmptyFolderModel: ObservableObject {
                 self.finishOperation()
                 self.isScanning = false
                 guard !result.wasCancelled else {
-                    self.statusMessage = "スキャンを中止しました。もう一度調べるには「もう一度調べる」を押してください。"
+                    self.statusMessage = self.messages.scanStopped
                     return
                 }
                 self.emptyFolders = result.emptyFolders
                 self.dsStoreFiles = result.dsStoreFiles
                 // 見つかったものは既定で全部チェック済み。外したい人だけが外す。
                 self.setAllSelected(true)
-                self.statusMessage = Self.foundSummary(result)
+                self.statusMessage = self.messages.found(result)
             }
         }
     }
@@ -207,7 +211,7 @@ final class EmptyFolderModel: ObservableObject {
         guard isBusy, !isCancelling else { return }
         isCancelling = true
         runningTask?.cancel()
-        statusMessage = "中止しています..."
+        statusMessage = messages.stopping
     }
 
     /// The sweep re-scans instead of deleting the list on screen: that list is a
@@ -218,7 +222,7 @@ final class EmptyFolderModel: ObservableObject {
     func deleteAll(approvedRoot: URL?, approvedSelection: Set<String>) {
         guard hasSelection, !isBusy, let root = targetFolder else { return }
         guard root == approvedRoot, selectedPaths == approvedSelection else {
-            statusMessage = "対象が変わったので中止しました。内容を確認してからもう一度実行してください。"
+            statusMessage = messages.targetChanged
             scan()
             return
         }
@@ -231,7 +235,7 @@ final class EmptyFolderModel: ObservableObject {
         let token = beginOperation()
         isDeleting = true
         progress = nil
-        statusMessage = usingTrash ? "ゴミ箱に移動中..." : "削除中..."
+        statusMessage = messages.deleteStarted(movedToTrash: usingTrash)
         let control = makeControl(token: token)
 
         runningTask = Task.detached(priority: .userInitiated) {
@@ -244,7 +248,7 @@ final class EmptyFolderModel: ObservableObject {
                 self.isDeleting = false
                 self.setAllSelected(true)
                 self.showDSStoreReappearNote = result.deletedFiles > 0
-                self.statusMessage = Self.deletedSummary(result, movedToTrash: usingTrash)
+                self.statusMessage = self.messages.deleted(result, movedToTrash: usingTrash)
             }
         }
     }
@@ -281,70 +285,9 @@ final class EmptyFolderModel: ObservableObject {
         progress = update.fraction
         switch phase {
         case .scanning:
-            statusMessage = "スキャン中... \(update.count.formatted()) 項目"
+            statusMessage = messages.scanning(count: update.count)
         case .deleting:
-            let verb = moveToTrash ? "ゴミ箱に移動中" : "削除中"
-            statusMessage = "\(verb)... \(update.count.formatted()) 件"
-        }
-    }
-
-    // MARK: - Messages
-
-    nonisolated static func foundSummary(_ result: FolderSweeper.ScanResult) -> String {
-        switch (result.emptyFolders.count, result.dsStoreFiles.count) {
-        case (0, 0):
-            return "削除できるものは見つかりませんでした。"
-        case (let folders, 0):
-            return "\(folders) 件の空フォルダが見つかりました。"
-        case (0, let files):
-            return "\(files) 個の .DS_Store が見つかりました。"
-        case (let folders, let files):
-            return "空フォルダ \(folders) 件、.DS_Store \(files) 個が見つかりました。"
-        }
-    }
-
-    nonisolated static func deletedSummary(_ result: FolderSweeper.SweepResult, movedToTrash: Bool) -> String {
-        var parts: [String] = []
-        if result.deletedFolders > 0 { parts.append("空フォルダ \(result.deletedFolders) 件") }
-        if result.deletedFiles > 0 { parts.append(".DS_Store \(result.deletedFiles) 個") }
-        let verb = movedToTrash ? "をゴミ箱に入れました" : "を完全に削除しました"
-        let names = result.failures.prefix(3).map { $0.url.lastPathComponent }.joined(separator: "、")
-        let more = result.failures.count > 3 ? " ほか\(result.failures.count - 3)件" : ""
-        let failed = "\(result.failures.count) 件は処理できませんでした（\(names)\(more)）。"
-
-        // Skipped items are not failures: the folder gained content between the scan
-        // and the delete, so leaving it alone is the correct outcome. Saying nothing
-        // would look like a bug, because the row was on screen and is still there.
-        let skipped = result.skipped.isEmpty
-            ? ""
-            : " \(result.skipped.count) 件は、中身が残っていたため削除しませんでした。"
-
-        let limit = result.hitPassLimit
-            ? " まだ残りがあります。もう一度実行してください。"
-            : ""
-
-        // 中止したときは残りの一覧を画面に戻していない。途中まで消したあとの古い
-        // 一覧を見せることになるからで、何が残っているかは調べ直さないと言えない。
-        let rescanHint = "残りを調べるには「もう一度調べる」を押してください。"
-        let stopped = result.wasCancelled ? " 中止しました。\(rescanHint)" : ""
-
-        // Shown only when the sweep ended with nothing left to delete, so this really
-        // is the last word — not just "this pass found no failures".
-        let confirmed = (!result.wasCancelled && result.remaining.isEmpty && result.skipped.isEmpty)
-            ? "確認済み・消し残しはありません。"
-            : ""
-
-        switch (parts.isEmpty, result.failures.isEmpty) {
-        case (true, true):
-            if result.wasCancelled { return "中止しました。削除したものはありません。\(rescanHint)" }
-            return skipped.isEmpty ? "削除できるものはありませんでした。" : "削除しませんでした。\(skipped)"
-        case (true, false):
-            // Nothing came out, so "nothing to delete was found" would contradict itself.
-            return "\(failed)\(skipped)\(stopped)\(limit)"
-        case (false, true):
-            return "\(parts.joined(separator: "、"))\(verb)。\(confirmed)\(skipped)\(stopped)\(limit)"
-        case (false, false):
-            return "\(parts.joined(separator: "、"))\(verb)。 \(failed)\(skipped)\(stopped)\(limit)"
+            statusMessage = messages.deleting(count: update.count, movedToTrash: moveToTrash)
         }
     }
 }
