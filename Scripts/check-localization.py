@@ -24,13 +24,22 @@ SwiftUI の `Text("...")` は、リテラルをそのまま翻訳のキーとし
 
 `String` を意図して受けている行（翻訳しない表示用のデータなど）は、同じ行に
 `l10n-ignore` と書くと検査から外れる。理由も添えること。
+
+既知の限界
+----------
+これは Swift の構文解析器ではなく、このアプリの数ファイルを守るための簡易な静的検査。
+次のような書き方は読めないので、使うときはこの検査を信用せず、英語で起動して目で確かめること。
+
+- 生文字列リテラル（`#"..."#`）、マクロ、`#if` による宣言の出し分け
+- `String` の型エイリアス（`typealias Label = String`）や、プロパティラッパー経由の String
+- 型を推論させた `String`（`let title = someString` を `Text(title)` に渡す、など）
+- 画面を作るファイル以外（`VIEW_FILES`）で String を受ける関数
 """
 import glob
 import json
 import os
 import re
 import sys
-import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CATALOG = os.path.join(ROOT, "EmptyFolderCleaner", "Localizable.xcstrings")
@@ -140,18 +149,94 @@ VIEW_FILES = ("ContentView.swift", "HelpView.swift", "EmptyFolderCleanerApp.swif
 
 FUNC_HEAD = re.compile(r"\bfunc\s+\w+[^(\n]*\(")
 STRING_TYPE = re.compile(r"(?:\[\s*String\s*\]|Array<\s*String\s*>|String)\??")
+# 型注釈の前後で改行されていても拾えるよう、行ではなく全体に対して当てる。
 STRING_PROPERTY = re.compile(
-    r"^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:private|fileprivate|public|internal)\s+)?(?:static\s+)?(?:let|var)\s+\w+\s*:\s*(\[\s*String\s*\]|Array<\s*String\s*>|String)\??(?![\w.])"
+    r"^[ \t]*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:private|fileprivate|public|internal)(?:\([^)]*\))?\s+)*"
+    r"(?:static\s+)?(?:lazy\s+)?(?:let|var)\s+\w+\s*:\s*"
+    r"(?:\[\s*String\s*\]|Array<\s*String\s*>|String)\??(?![\w.])",
+    re.M,
 )
 
 
+def blank_comments_and_strings(source: str) -> str:
+    """
+    コメントと文字列リテラルの中身を空白に置き換える（改行と文字数は保つので、行番号は変わらない）。
+
+    宣言の走査は括弧の対応を追うため、文字列やコメントの中の `)` や、コメントアウトされた
+    宣言に惑わされてはいけない。補間（`\\( ... )`）の中の入れ子の文字列も読み飛ばす。
+    """
+    out = list(source)
+    n = len(source)
+
+    def blank(a: int, b: int):
+        for k in range(a, b):
+            if out[k] != "\n":
+                out[k] = " "
+
+    def skip_interpolation(j: int) -> int:
+        depth = 1
+        while j < n and depth:
+            c = source[j]
+            if c == '"':
+                j = skip_string(j)
+                continue
+            depth += c == "("
+            depth -= c == ")"
+            j += 1
+        return j
+
+    def skip_string(i: int) -> int:
+        triple = source.startswith('"""', i)
+        j = i + (3 if triple else 1)
+        while j < n:
+            if source[j] == "\\":
+                j = skip_interpolation(j + 2) if source.startswith("\\(", j) else j + 2
+            elif triple and source.startswith('"""', j):
+                return j + 3
+            elif not triple and source[j] == '"':
+                return j + 1
+            elif not triple and source[j] == "\n":
+                return j  # 閉じ忘れ。1行を越えて読み続けない
+            else:
+                j += 1
+        return n
+
+    i = 0
+    while i < n:
+        if source.startswith("//", i):
+            j = source.find("\n", i)
+            j = n if j < 0 else j
+            blank(i, j)
+            i = j
+        elif source.startswith("/*", i):
+            depth, j = 1, i + 2
+            while j < n and depth:
+                if source.startswith("/*", j):
+                    depth += 1
+                    j += 2
+                elif source.startswith("*/", j):
+                    depth -= 1
+                    j += 2
+                else:
+                    j += 1
+            blank(i, j)
+            i = j
+        elif source[i] == '"':
+            j = skip_string(i)
+            blank(i, j)
+            i = j
+        else:
+            i += 1
+    return "".join(out)
+
+
 def split_top_level(text: str):
-    """括弧・角括弧・山括弧の外側のカンマで分ける。"""
+    """括弧・角括弧・山括弧の外側のカンマで分ける。`->` の `>` は閉じ括弧ではない。"""
     parts, depth, current = [], 0, []
-    for char in text:
+    for index, char in enumerate(text):
         if char in "([<":
             depth += 1
-        elif char in ")]>":
+        elif char in ")]" or (char == ">" and text[index - 1:index] != "-"):
             depth -= 1
         if char == "," and depth == 0:
             parts.append("".join(current))
@@ -162,36 +247,41 @@ def split_top_level(text: str):
     return parts
 
 
-def string_parameters(path: str):
+def find_string_declarations(source: str):
     """`String`（や `[String]`）を引数に取る関数と、`String` 型のプロパティを返す。"""
-    source = open(path, encoding="utf-8").read()
     lines = source.split("\n")
+    code = blank_comments_and_strings(source)
 
-    def ignored(line_number: int) -> bool:
-        return "l10n-ignore" in lines[line_number - 1]
+    def ignored(first: int, last: int) -> bool:
+        # 除外の印はコメントに書くので、元のソースの行で探す。
+        return any("l10n-ignore" in lines[n - 1] for n in range(first, last + 1))
 
-    for match in FUNC_HEAD.finditer(source):
-        line_number = source.count("\n", 0, match.start()) + 1
-        if lines[line_number - 1].strip().startswith("//") or ignored(line_number):
-            continue
+    for match in FUNC_HEAD.finditer(code):
+        first = code.count("\n", 0, match.start()) + 1
         # 宣言の閉じ括弧まで、複数行にまたがっても括弧の対応を追う。
         depth, i = 1, match.end()
-        while i < len(source) and depth:
-            depth += source[i] == "("
-            depth -= source[i] == ")"
+        while i < len(code) and depth:
+            depth += code[i] == "("
+            depth -= code[i] == ")"
             i += 1
-        parameters = source[match.end():i - 1]
-        for parameter in split_top_level(parameters):
+        last = code.count("\n", 0, i) + 1
+        if ignored(first, last):
+            continue
+        for parameter in split_top_level(code[match.end():i - 1]):
             typed = re.search(r":\s*(?:inout\s+)?([^=]+?)\s*(?:=.*)?$", parameter.strip(), re.S)
             if typed and STRING_TYPE.fullmatch(typed.group(1).strip()):
-                yield line_number, lines[line_number - 1].strip()
+                yield first, lines[first - 1].strip()
                 break
 
-    for number, line in enumerate(lines, 1):
-        if line.strip().startswith("//") or ignored(number):
-            continue
-        if STRING_PROPERTY.match(line):
-            yield number, line.strip()
+    for match in STRING_PROPERTY.finditer(code):
+        first = code.count("\n", 0, match.start()) + 1
+        last = code.count("\n", 0, match.end()) + 1
+        if not ignored(first, last):
+            yield first, lines[first - 1].strip()
+
+
+def string_parameters(path: str):
+    return find_string_declarations(open(path, encoding="utf-8").read())
 
 
 # ---------------------------------------------------------------- 画面のリテラル
@@ -264,12 +354,7 @@ def self_test() -> int:
         return errors
 
     def declarations(source):
-        with tempfile.NamedTemporaryFile("w", suffix=".swift", delete=False, encoding="utf-8") as handle:
-            handle.write(source)
-        try:
-            return list(string_parameters(handle.name))
-        finally:
-            os.unlink(handle.name)
+        return list(find_string_declarations(source))
 
     # --- 書式指定子: 拒否すべきもの
     expect("存在しない第3引数 (%3$lld)", translation_errors("%lld 件中 %lld 件", "%3$lld of %1$lld"))
@@ -314,6 +399,19 @@ def self_test() -> int:
     expect("String を返すだけの関数は通す", not declarations("private func a(_ url: URL) -> String { url.path }"))
     expect("l10n-ignore で除外できる", not declarations("private static let home: String = x // l10n-ignore: データ"))
     expect("コメント内の宣言は無視", not declarations("// private func a(_ text: String) {}"))
+
+    # --- 字句の罠（コメント・文字列・クロージャ型・改行）
+    expect("クロージャ型の後ろの String 引数", declarations("func a(_ action: (String) -> Void, _ title: String) {\n    Text(title)\n}"))
+    expect("クロージャ型の引数だけなら通す", not declarations("func a(_ action: (String) -> Void) {}"))
+    expect("コメントの ) の後ろの String 引数", declarations("func a(_ x: Int /* ) */, _ title: String) {\n    Text(title)\n}"))
+    expect("既定値の文字列に ) がある", declarations('func a(_ x: Int = count(")"), _ title: String) {\n    Text(title)\n}'))
+    expect("ブロックコメント内の宣言は無視", not declarations("/* func a(_ title: String) {} */"))
+    expect("文字列リテラル内の宣言は無視", not declarations('let doc = "func a(_ title: String) {}"'))
+    expect("型注釈が改行されたプロパティ", declarations("struct V: View {\n    let title:\n        String\n    var body: some View { Text(title) }\n}"))
+    expect("属性つきプロパティ", declarations("struct V: View {\n    @State private var name: String = \"\"\n}"))
+    expect("ジェネリクスの山括弧", declarations("func a<T: Hashable>(_ items: [T], _ title: String) {}"))
+    expect("補間の中の入れ子の文字列で崩れない", declarations('let x = "\\(f("a)b"))"\nfunc a(_ title: String) {}'))
+    expect("l10n-ignore は複数行宣言でも効く", not declarations("func a(\n    _ title: String // l10n-ignore: データ\n) {}"))
 
     for label in failures:
         print(f"自己検査に失敗: {label}", file=sys.stderr)
