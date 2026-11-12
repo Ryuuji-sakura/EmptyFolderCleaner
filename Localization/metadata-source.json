@@ -1,0 +1,33 @@
+{
+  "name": {
+    "limit": 30,
+    "en": "Empty Folder Sweeper",
+    "note": "アプリ名。Localization/用語集.md の「アプリ名」の表の名前をそのまま使う（変更しない）"
+  },
+  "subtitle": {
+    "limit": 30,
+    "en": "Find and clear empty folders",
+    "ja": "空のフォルダを見つけてまとめて削除",
+    "note": "アプリ名の下に出る短い説明。名前と同じ語を繰り返さず、30字以内"
+  },
+  "promotionalText": {
+    "limit": 170,
+    "en": "Drag and drop a folder to find the empty folders inside it and clear them out. You choose what goes, and everything lands in the Trash first, so it can be put back.",
+    "note": "ストアの先頭に出る宣伝文。170字以内"
+  },
+  "keywords": {
+    "limit": 100,
+    "en": "cleanup,tidy,declutter,DS_Store,organizer,disk,Finder,remove,delete,unused,directories,sweep",
+    "note": "検索語。カンマ区切り、カンマの後ろに空白を入れない、100字以内（カンマも数える）。直訳ではなく、その国の人が実際に検索で打つ言葉にする。アプリ名・サブタイトルに入っている語は重ねない"
+  },
+  "description": {
+    "limit": 4000,
+    "en": "Find the empty folders hiding inside a folder you choose and clear them out in one go.\nNo Terminal needed. Just drag and drop a folder.\n\n■ Even deeply nested folders, in one pass\nIt finds nested empty folders all the way down. Folders that become empty after a deletion are cleared in the same run, so you don't have to start over again and again.\n\n■ Choose what to remove\nEverything found is listed for you to review. Uncheck anything you want to keep. Double-click a row to open that folder in Finder and check its contents before you decide.\n\n■ The Trash by default\nDeleted items go to the Trash, so a mistake can be undone with Put Back in Finder. A run of nested folders goes to the Trash as a single item, so it doesn't clutter the Trash.\n\n■ Handles invisible files too\nFinder quietly creates an invisible file called \".DS_Store\". Just one of them left behind makes a folder look empty yet refuse to be deleted. This app treats such folders as empty. It checks each file's contents and removes only genuine Finder files, so a file you named yourself is never touched.\n\n■ Safe by design\n• The folder you choose is never deleted\n• A folder holding even one real file is never deleted\n• Symbolic links are never followed\n• It does not go inside packages such as apps and photo libraries\n• It does not go inside hidden folders such as \".git\"\n\n■ Large folders, too\nA progress bar and a live count show how far along it is, and you can stop at any time.\n\n■ Privacy\nThe app makes no network connections at all. It can only access the folder you give it.",
+    "note": "説明文。見出しの ■ と箇条書きの ・ は残す。4000字以内"
+  },
+  "whatsNew": {
+    "limit": 4000,
+    "en": "Now available in 12 more languages: Indonesian, Malay, Korean, Danish, Thai, Traditional Chinese, Simplified Chinese, German, Spanish, French, Vietnamese and Hindi.",
+    "note": "このバージョンの最新情報（1.7）"
+  }
+}

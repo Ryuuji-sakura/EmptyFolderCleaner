@@ -1117,3 +1117,50 @@ Codex の検査は計7回。1〜4回目は静的検査の見逃し、5〜6回目
 5. **公開されたら**、サポートサイトの変更を push する
    （`ios/Ryuuji-sakura.github.io` にローカルコミット済み。先に出すと「英語に対応」という記述が
    事実と食い違う）。このリポジトリも、名前が確定してから push する
+
+
+## v1.7: 12言語の追加（2026-11-13）
+
+ユーザーの希望（「コートポンと同じ12言語入れて」）。id ms ko da th zh-Hant zh-Hans de es fr vi hi。
+枝 `feature/1.7-12languages`。1.6（英語）は審査中の可能性があるので、1.7 は 1.6 の結果が出てから提出する。
+
+### 決めたこと
+- **アプリ名**（Dock・メニューバー・ヘルプの表題）は Grok に相談。1回目は質問が重くて時間切れ（5分超）、名前だけに絞って再送。
+  採用: 検索で現地の人が打つ言葉を名前に入れる（B案）。ただし hi は英語名のまま（Grok 推奨、インドは英語名が一般的）。
+  不採用: fr の「Dossiers vides」（動詞が無く機能が伝わりにくい）→「Supprimer les dossiers vides」。表は `Localization/用語集.md`。
+- **ask-grok は標準入力で質問を渡す**（`ask-grok "短い指示" < 質問.txt`）。引数だけで渡すと、標準入力の終わりを待って固まる。
+- **翻訳の進め方**: コートポン！の `翻訳の受け渡し.py` を `Scripts/translation-handoff.py` に移植（export → Antigravity が訳す →
+  check → import）。Antigravity は 4 並列で 11 言語を約 10 分、ドイツ語は単独で約 5 分。私が全言語の組み立て部品を読んで直した。
+- **文の組み立て**: `%@` に「3 empty folders」「1 .DS_Store file」が入るので、動詞が名詞句の数・性に一致する言語（es fr hi de）は
+  「ラベル: %@」の形にする（用語集の共通の決まり3）。Codex が es の確認文（Se moverá …）と hi の注意書き（नहीं जाएगा）に残った
+  数の不一致を指摘 → 「lo siguiente」形・処理を主語にした文に直した。
+
+### 検査の道具（Codex に2回見てもらった）
+- `Scripts/check-localization.py`: 全言語の訳の抜け・複数形の区分（CLDR: es/fr は many が要る）・書式指定子・かなの混入・
+  `InfoPlist.strings` と画面の名前の一致。かなの範囲は中黒（・）を除き補助面のかなを含める。
+- Codex の指摘と対応: 受け渡し検査が不正な位置指定（%9$lld）や %s を通す(P1) → check-localization の厳しい検査を借りる、
+  比較元を作業ファイルでなくカタログに、check の終了コード、言語間で複数形の構造をそろえる条件は誤り（韓国語は単一の文でよい）→ 削除、
+  数字の照合は桁の切れ目で。見送り: 文の区切りが半角スペース1つで固定（中国語で「。 」と空白が入る）。
+- **変異検査**で効くことを確認: ko の訳を日本語に戻す → lint と単体テストが捕まえた、es のボタン名の引用をずらす → 捕まえた。
+- Codex が Apple 公式のヒンディー語ガイドを根拠に指摘: ゴミ箱は「रद्दी」、移動は「मूव करें」、Put Back は「वापस रखें」（用語集の
+  「ट्रैश」は誤り。公式ページで確認して全部直した）。
+
+### テスト
+ユニット51件（`MultiLanguageTests` 6件が全言語を見る）+ UI 24件（`AllLanguagesScreenTests` 12言語、1言語約1分で約13分）。
+- UIテストの落とし穴: ⌘? は macOS のヘルプ検索を開くだけで窓は開かない → 最後のメニューの先頭項目を押す。
+  XCUITest のキー入力はアプリが前面でないと「Failed to synthesize event」で5分待つ → `app.activate()` とタイトルバーのクリック。
+  選択パネルは言語ごとにボタン名が違うので、Return で押す。フォルダ選択がまれに空振りするので1回やり直す。
+- UIテストのあとの設定の確認は従来どおり（moveToTrash=1、deleteAllDSStoreFiles=0）。今回も異常なし。
+- 全言語のメイン画面・ヘルプ・ダイアログを目で見て、崩れ・切れは無し（de fr th hi を重点的に）。
+
+### App Store の文面
+`Localization/metadata-source.json`（英語が正）→ `Scripts/metadata-handoff.py`（文字数の上限・かな・キーワードの体裁・
+名前が画面と同じ）→ `Localization/metadata/<言語>.json`。キーワードは直訳でなく現地で検索される語。
+
+### 残っている作業
+1. `Scripts/appstore.sh` で 1.7（ビルド8）の `.pkg` を作る
+2. 1.6 の審査結果を待つ（承認されるまで 1.7 は提出できない）。結果は App Store Connect で確認
+3. 1.7 を Transporter で送り、12言語の文面（`Localization/metadata/`）とスクリーンショットを App Store Connect に入れる
+   （スクリーンショットは AllLanguagesScreenTests の 2-scanned を元にするが、フォルダ名が実行時のテスト用の長い名前なので、
+   掲載用は英語版と同じく英語名のデモフォルダで撮り直す）
+4. 名前が各言語の枠で通るか（予約済みの名前は検索に出ない）は入力して初めて分かる

@@ -29,8 +29,9 @@
   中に空のフォルダがあっても触りません
 - **隠しフォルダの中には入りません**。`.git` などの内部構造を壊しません
 - App Sandbox 対応。アクセスできるのは、あなたが選んだフォルダだけです
-- **日本語と英語に対応**しています。Mac の優先言語に合わせて切り替わります。
-  英語では `Empty Folder Sweeper` という名前で表示されます
+- **14言語に対応**しています（日本語・英語に加えて、インドネシア語・マレー語・韓国語・デンマーク語・タイ語・
+  繁体字中国語・簡体字中国語・ドイツ語・スペイン語・フランス語・ベトナム語・ヒンディー語）。
+  Mac の優先言語に合わせて切り替わり、名前も言語ごとに変わります（英語では `Empty Folder Sweeper`）
 
 ## インストール
 
@@ -39,7 +40,7 @@
 
 **必要な環境**: macOS 14 (Sonoma) 以降
 
-画面の言語は Mac の「優先する言語」に従います（日本語・英語）。英語が優先言語に無い場合は日本語で表示されます。
+画面の言語は Mac の「優先する言語」に従います（日本語・英語と上の12言語）。どれも優先言語に無い場合は日本語で表示されます。
 
 ## 使い方
 
@@ -105,7 +106,7 @@ xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
   -configuration Release -derivedDataPath build build
 ```
 
-テスト（ユニット45件 + UI 12件）:
+テスト（ユニット51件 + UI 24件）:
 
 ```sh
 xcodebuild -project EmptyFolderCleaner.xcodeproj -scheme EmptyFolderCleaner \
@@ -122,10 +123,10 @@ AppKit にも main actor にも依存していないため、実ファイルシ�
 いないことを確かめるテストで、環境の言語に関係なく動きます。設定は起動引数で固定し、
 UI では切り替えないので、途中で失敗しても開発機のアプリの設定は書き換わりません。
 
-### 文言（日本語・英語）
+### 文言（日本語・英語・12言語）
 
-画面に出す文は `EmptyFolderCleaner/Localizable.xcstrings` に日英を持ちます。キーは日本語の
-原文そのものです（日本語を直したら、同じ原文のキーの英訳も直す）。件数から組み立てる文は
+画面に出す文は `EmptyFolderCleaner/Localizable.xcstrings` に全言語を持ちます。キーは日本語の
+原文そのものです（日本語を直したら、同じ原文のキーの全言語の訳も直す）。件数から組み立てる文は
 `SweepMessages.swift` にまとめてあり、**英語の文面はユニットテストが言語を指定して検証**します。
 
 ```sh
@@ -135,6 +136,8 @@ UI では切り替えないので、途中で失敗しても開発機のアプ�
 画面のリテラルとカタログの食い違い（訳の抜け・引数の不一致・`String` 経由で翻訳されなくなった
 箇所）を調べます。訳の無い文言はエラーにならず日本語のまま表示されるので、ビルドでは
 気づけません。`release.sh` と `appstore.sh` の途中で自動的に走ります。
+全言語について、訳の抜け・複数形の区分（es・fr は one/many/other）・書式指定子・かなの混入・
+Dock の名前（`*.lproj/InfoPlist.strings`）と画面の中の名前の一致も見ます。
 `--self-test` を付けると、検査そのものが見逃したり誤検出したりしないかを確かめます。
 翻訳しない `String`（表示用のデータなど）は、その行に `l10n-ignore` と理由を書くと除外できます。
 
@@ -147,3 +150,17 @@ UI では切り替えないので、途中で失敗しても開発機のアプ�
 ## ライセンス
 
 MIT License — [LICENSE](LICENSE) を参照してください。
+
+### 翻訳を足す・直すとき
+
+用語と決まりは `Localization/用語集.md`（アプリ名の表・言語ごとの決まり）。画面の訳は
+`Scripts/translation-handoff.py`、App Store の文面（名前・サブタイトル・宣伝文・キーワード・説明・最新情報）は
+`Scripts/metadata-handoff.py` で、言語ごとの作業ファイル（`Localization/work/`、git 管理外）を介して
+書き出し→訳す→検査→取り込みます。取り込み済みの App Store 文面は `Localization/metadata/<言語>.json`、
+元の文面は `Localization/metadata-source.json`。
+
+`UITests/AllLanguagesScreenTests.swift` は、12言語を1つずつ実際に起動して、画面（初期・スキャン結果・
+吹き出し・確認ダイアログ・メニュー・使いかたの窓）に日本語が残っていないことを確かめ、スクリーンショットを
+`~/Library/Containers/com.ryuujisakura.emptyfoldercleaner.uitests.xctrunner/Data/tmp/AllLanguagesShots/` に
+保存します（1言語あたり約1分）。単体テストの `MultiLanguageTests` は、組み立てた文に日本語・書式の穴が無いこと、
+件数が桁の切れ目で入っていること、ボタン名を引用する文がそのボタンの訳と同じ語であることを全言語で確かめます。

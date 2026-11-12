@@ -1,0 +1,5 @@
+/* メニューバーとDockに出る名前。PRODUCT_NAME は英語のままで、表示名だけをここで切り替えている
+   （理由は ja.lproj/InfoPlist.strings）。名前は Localization/用語集.md の「アプリ名」の表と同じにする。
+   Localizable.xcstrings のキー「空フォルダ削除」の訳とも一致させること。 */
+"CFBundleName" = "Xóa thư mục trống";
+"CFBundleDisplayName" = "Xóa thư mục trống";

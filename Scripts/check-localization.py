@@ -103,50 +103,74 @@ def parse_format(text: str):
     return args, problems
 
 
+# CLDR の複数形の区分。Xcode は、その言語で使う区分がそろっていないと、該当する数で
+# 別の区分に落ちたり空になったりする。コートポン！の 翻訳の受け渡し.py と同じ表。
+PLURAL_CATEGORIES = {
+    "en": ("one", "other"),
+    "ja": ("other",),
+    "id": ("other",), "ms": ("other",), "ko": ("other",), "th": ("other",),
+    "zh-Hant": ("other",), "zh-Hans": ("other",), "vi": ("other",),
+    "da": ("one", "other"), "hi": ("one", "other"), "de": ("one", "other"),
+    # スペイン語・フランス語は「many」（100万などの大きな数）がある。
+    "es": ("one", "many", "other"), "fr": ("one", "many", "other"),
+}
+# カタログに必ず入っているべき言語（開発言語の ja は除く）。
+LANGUAGES = ("en", "id", "ms", "ko", "da", "th", "zh-Hant", "zh-Hans", "de", "es", "fr", "vi", "hi")
+# ひらがな・カタカナ（拡張・半角を含む）。中国語は漢字を使うので漢字は数えない。
+# これが他言語の訳に混ざっていたら、日本語の文が訳されずに残っている。
+# 中黒（・U+30FB）は外国人名などで中国語でも使うので除く。補助面のかな（U+1B000〜）も数える。
+KANA = re.compile("[\u3041-\u30fa\u30fc-\u30ff\u31f0-\u31ff\uff66-\uff9f\U0001b000-\U0001b16f]")
+
+
 def check_translation(key: str, value: str, label: str, errors: list):
     if not value.strip():
-        errors.append(f"英訳が空: 「{key}」 ({label})")
+        errors.append(f"訳が空: 「{key}」 ({label})")
         return
     want, key_problems = parse_format(key)
     got, value_problems = parse_format(value)
     for problem in key_problems:
         errors.append(f"キーの書式が不正: 「{key}」 {problem}")
     for problem in value_problems:
-        errors.append(f"英訳の書式が不正: 「{key}」 ({label}) {problem}")
+        errors.append(f"訳の書式が不正: 「{key}」 ({label}) {problem}")
+    if KANA.search(value):
+        errors.append(f"訳に日本語（かな）が残っている: 「{key}」 ({label}) {value!r}")
     if key_problems or value_problems:
         return
     if sorted(got) != sorted(want):
-        errors.append(f"英訳の引数の番号・個数がキーと合わない: 「{key}」 ({label}) 期待 {sorted(want)} / 実際 {sorted(got)}")
+        errors.append(f"訳の引数の番号・個数がキーと合わない: 「{key}」 ({label}) 期待 {sorted(want)} / 実際 {sorted(got)}")
         return
     for index in sorted(want):
         if got[index] != want[index]:
-            errors.append(f"英訳の引数の型がキーと合わない: 「{key}」 ({label}) 引数{index}は {want[index]} のはずが {got[index]}")
+            errors.append(f"訳の引数の型がキーと合わない: 「{key}」 ({label}) 引数{index}は {want[index]} のはずが {got[index]}")
 
 
-def check_entry(key: str, entry: dict, errors: list):
-    en = entry.get("localizations", {}).get("en")
-    if not en:
-        errors.append(f"英語の訳が無い: 「{key}」")
-        return
-    plural = en.get("variations", {}).get("plural")
-    if plural is not None:
-        # 英語の複数形は one と other の2つが要る。other が無いと、該当しない数で落ちる。
-        for category in ("one", "other"):
-            unit = plural.get(category, {}).get("stringUnit")
-            if not unit:
-                errors.append(f"複数形に {category} が無い: 「{key}」")
-                continue
-            if unit.get("state") != "translated":
-                errors.append(f"複数形 {category} が translated でない: 「{key}」")
-            check_translation(key, unit.get("value", ""), f"plural.{category}", errors)
-        return
-    unit = en.get("stringUnit")
-    if not unit:
-        errors.append(f"英語の訳が無い: 「{key}」")
-        return
-    if unit.get("state") != "translated":
-        errors.append(f"英訳が translated でない: 「{key}」")
-    check_translation(key, unit.get("value", ""), "en", errors)
+def check_entry(key: str, entry: dict, errors: list, languages=("en",)):
+    """languages の各言語について、訳が入っていて、書式と複数形が正しいことを確かめる。"""
+    for language in languages:
+        loc = entry.get("localizations", {}).get(language)
+        if not loc:
+            errors.append(f"{language} の訳が無い: 「{key}」")
+            continue
+        plural = loc.get("variations", {}).get("plural")
+        if plural is not None:
+            # その言語が使う区分がそろっていないと、該当しない数で落ちる。余分な区分は害が無いので許す。
+            categories = PLURAL_CATEGORIES[language]
+            for category in categories:
+                unit = plural.get(category, {}).get("stringUnit")
+                if not unit:
+                    errors.append(f"複数形に {category} が無い: 「{key}」 ({language})")
+                    continue
+                if unit.get("state") != "translated":
+                    errors.append(f"複数形 {category} が translated でない: 「{key}」 ({language})")
+                check_translation(key, unit.get("value", ""), f"{language}.plural.{category}", errors)
+            continue
+        unit = loc.get("stringUnit")
+        if not unit:
+            errors.append(f"{language} の訳が無い: 「{key}」")
+            continue
+        if unit.get("state") != "translated":
+            errors.append(f"{language} の訳が translated でない: 「{key}」")
+        check_translation(key, unit.get("value", ""), language, errors)
 
 
 # ---------------------------------------------------------------- String を受ける宣言
@@ -322,6 +346,35 @@ def literals(path: str):
     return find_literals(open(path, encoding="utf-8").read())
 
 
+def parse_strings_file(path: str) -> dict:
+    """InfoPlist.strings（"キー" = "値";）を読む。コメントは /* */ のみ想定。"""
+    text = re.sub(r"/\*.*?\*/", "", open(path, encoding="utf-8").read(), flags=re.S)
+    return dict(re.findall(r'"((?:[^"\\]|\\.)*)"\s*=\s*"((?:[^"\\]|\\.)*)"\s*;', text))
+
+
+def check_app_names(catalog: dict) -> list:
+    errors = []
+    app_key = "空フォルダ削除"
+    for language in ("ja",) + LANGUAGES:
+        path = os.path.join(ROOT, "EmptyFolderCleaner", f"{language}.lproj", "InfoPlist.strings")
+        if not os.path.exists(path):
+            errors.append(f"InfoPlist.strings が無い: {language}.lproj")
+            continue
+        strings = parse_strings_file(path)
+        display, bundle = strings.get("CFBundleDisplayName"), strings.get("CFBundleName")
+        if not display or display != bundle:
+            errors.append(f"{language}.lproj/InfoPlist.strings の CFBundleName と CFBundleDisplayName が違うか、無い")
+            continue
+        if language == "ja":
+            expected = app_key
+        else:
+            unit = catalog.get(app_key, {}).get("localizations", {}).get(language, {}).get("stringUnit", {})
+            expected = unit.get("value")
+        if expected is not None and display != expected:
+            errors.append(f"アプリ名が食い違う ({language}): InfoPlist.strings は「{display}」、カタログのキー「{app_key}」の訳は「{expected}」")
+    return errors
+
+
 def run() -> int:
     catalog = json.load(open(CATALOG, encoding="utf-8"))["strings"]
     by_normalized = {normalize(key): key for key in catalog}
@@ -341,9 +394,13 @@ def run() -> int:
                 used.add(key)
 
     for key, entry in catalog.items():
-        check_entry(key, entry, errors)
+        check_entry(key, entry, errors, LANGUAGES)
         if normalize(key) not in used:
             warnings.append(f"コードから使われていないキー: 「{key}」")
+
+    # Dock・メニューバーの名前（InfoPlist.strings）と、画面の中の名前（カタログのキー「空フォルダ削除」の訳）は
+    # 同じでなければならない。食い違うと、Dock と ヘルプの表題で別のアプリ名に見える。
+    errors.extend(check_app_names(catalog))
 
     for name in VIEW_FILES:
         path = os.path.join(ROOT, "EmptyFolderCleaner", name)
@@ -409,6 +466,43 @@ def self_test() -> int:
         "one": {"stringUnit": {"state": "translated", "value": "%lld item"}},
         "other": {"stringUnit": {"state": "translated", "value": "%lld items"}}}}}}}, errors)
     expect("正しい複数形は通す", not errors)
+
+    # --- 多言語（12言語を足した）
+    import tempfile
+    with tempfile.NamedTemporaryFile("w", suffix=".strings", delete=False, encoding="utf-8") as f:
+        f.write('/* c "x" = "y"; */\n"CFBundleName" = "A \\"b\\"";\n"CFBundleDisplayName" = "A \\"b\\"";\n')
+        tmp_strings = f.name
+    parsed = parse_strings_file(tmp_strings)
+    os.unlink(tmp_strings)
+    expect("InfoPlist.strings を読む（コメントと引用符）", parsed == {"CFBundleName": 'A \\"b\\"', "CFBundleDisplayName": 'A \\"b\\"'})
+    def unit(value, state="translated"):
+        return {"stringUnit": {"state": state, "value": value}}
+
+    def entry_errors(entry, languages):
+        errs = []
+        check_entry("%lld 件", entry, errs, languages)
+        return errs
+
+    expect("言語の欠落（de が無い）", entry_errors({"localizations": {"en": unit("%lld items")}}, ("en", "de")))
+    expect("日本語（かな）が残った訳を拒否",
+           entry_errors({"localizations": {"de": unit("%lld 件を削除します")}}, ("de",)))
+    expect("中国語の漢字と「、」は日本語として扱わない",
+           not entry_errors({"localizations": {"zh-Hans": unit("%lld 个空文件夹、已删除")}}, ("zh-Hans",)))
+    expect("スペイン語は many が要る", entry_errors({"localizations": {"es": {"variations": {"plural": {
+        "one": unit("%lld carpeta"), "other": unit("%lld carpetas")}}}}}, ("es",)))
+    expect("スペイン語は one・many・other がそろえば通す", not entry_errors({"localizations": {"es": {"variations": {"plural": {
+        "one": unit("%lld carpeta"), "many": unit("%lld de carpetas"), "other": unit("%lld carpetas")}}}}}, ("es",)))
+    expect("日本語は other だけでよい（複数形なし）", not entry_errors({"localizations": {"ko": {"variations": {"plural": {
+        "other": unit("%lld개")}}}}}, ("ko",)))
+    expect("韓国語に one だけでは足りない（other が要る）", entry_errors({"localizations": {"ko": {"variations": {"plural": {
+        "one": unit("%lld개")}}}}}, ("ko",)))
+    # 複数形を持たない言語は、英語が複数形でも単一の文で訳してよい（正しい構造）。
+    expect("英語が複数形でも、韓国語は単一の文で訳してよい", not entry_errors({"localizations": {
+        "en": {"variations": {"plural": {"one": unit("%lld item"), "other": unit("%lld items")}}},
+        "ko": unit("%lld개")}}, ("en", "ko")))
+    expect("中黒（・）は日本語として扱わない", not entry_errors({"localizations": {"zh-Hans": unit("%lld 个 · 约翰・史密斯")}}, ("zh-Hans",)))
+    expect("補助面のかなを拒否", entry_errors({"localizations": {"de": unit("%lld \U0001b001")}}, ("de",)))
+    expect("translated でない訳を拒否", entry_errors({"localizations": {"fr": unit("%lld dossiers", "needs_review")}}, ("fr",)))
 
     # --- String を受ける宣言
     expect("1行の String 引数", declarations("private func a(_ text: String) -> some View { Text(text) }"))

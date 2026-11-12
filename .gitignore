@@ -15,3 +15,6 @@ Icon?
 
 # Claude Code の作業用ディレクトリ
 .claude/
+
+# 翻訳の受け渡し用の作業ファイル（取り込み後は不要）
+Localization/work/
