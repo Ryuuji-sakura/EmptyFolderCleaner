@@ -12,8 +12,8 @@
   },
   "promotionalText": {
     "limit": 170,
-    "en": "Drag and drop a folder to find the empty folders inside it and clear them out. You choose what goes, and everything lands in the Trash first, so it can be put back.",
-    "note": "ストアの先頭に出る宣伝文。170字以内"
+    "en": "Drag and drop a folder to find the empty folders inside it and clear them out. You choose what goes, and by default items go to the Trash first, so they can be put back.",
+    "note": "ストアの先頭に出る宣伝文。170字以内。『ゴミ箱に入る』は既定の動作（完全削除のモードもある）なので、必ず『既定では』と条件を付ける"
   },
   "keywords": {
     "limit": 100,

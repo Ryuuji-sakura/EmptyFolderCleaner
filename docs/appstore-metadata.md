@@ -150,10 +150,10 @@ Empty Folder Eraser も同様に空いていた）。ただし**未公開のア�
 Find and clear empty folders
 ```
 
-## プロモーション用テキスト（170字以内 / 164字）
+## プロモーション用テキスト（170字以内 / 169字）
 
 ```
-Drag and drop a folder to find the empty folders inside it and clear them out. You choose what goes, and everything lands in the Trash first, so it can be put back.
+Drag and drop a folder to find the empty folders inside it and clear them out. You choose what goes, and by default items go to the Trash first, so they can be put back.
 ```
 
 ## キーワード（100字以内 / 92字）
@@ -225,3 +225,9 @@ Notes:
 - The app makes no network connections.
 - The interface is available in Japanese and English.
 ```
+
+## 12言語の文面（v1.7）
+
+名前・サブタイトル・プロモーション・キーワード・概要・最新情報は `Localization/metadata/<言語>.json`（id ms ko da th zh-Hant zh-Hans de es fr vi hi）。
+元の英文は `Localization/metadata-source.json`。**プロモーション用テキストは「既定では」ゴミ箱に入る、と条件を付けている**
+（完全削除のモードがあり、「必ずゴミ箱に入る」と言うと事実と違う。1.6 で入れた英語の文は断言していたので、1.7 の入力時に上の文へ差し替える）。
