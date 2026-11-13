@@ -34,8 +34,13 @@
 
 ## インストール
 
-[Releases](https://github.com/Ryuuji-sakura/EmptyFolderCleaner/releases) から `.dmg` を
-ダウンロードして開き、`空フォルダ削除.app` を `Applications` フォルダにドラッグしてください。
+**Mac App Store で無料配信しています。**
+
+[Mac App Store で見る](https://apps.apple.com/jp/app/id6815618963?mt=12)
+
+以前は [Releases](https://github.com/Ryuuji-sakura/EmptyFolderCleaner/releases) で `.dmg` を配っていましたが、
+配布は App Store に一本化しました。Releases に残っている v1.4 は古い版で、今後は更新しません
+（App Store 版はアップデートが自動で届きます）。v1.4 をお使いの方は、App Store 版に入れ替えてください。
 
 **必要な環境**: macOS 14 (Sonoma) 以降
 
